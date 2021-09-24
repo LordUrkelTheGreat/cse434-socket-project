@@ -5,6 +5,16 @@ serverSocket = socket(AF_INET, SOCK_DGRAM)
 serverSocket.bind(('', serverPort))
 print("RUNNING")
 
+arr = []
+
+
+class UserInfo:
+    def __init__(self, userName, ipAddr, portNum, state):
+        self.userName = userName
+        self.ipAddr = ipAddr
+        self.portNum = portNum
+        self.state = state
+
 
 def server_register():
     # receive username, ip address, and port number from client
@@ -12,19 +22,69 @@ def server_register():
     regIP, clientAddress = serverSocket.recvfrom(2048)
     regPort, clientAddress = serverSocket.recvfrom(2048)
 
+    # random boolean statement set to true as default
+    valid = True
+
     # decode username, ip address, and port number
     decodeName = regName.decode()
     decodeIP = regIP.decode()
     decodePort = regPort.decode()
+    state = "Free"
 
-    success = "SUCCESS"
+    # Truth Value Testing method where the array variable's value is inverted
+    # to make the condition true
+    if not arr:
+        # add decoded information to array via userInfo
+        arr.append(UserInfo(decodeName, decodeIP, decodePort, state))
+        # print statements
+        print(f'Username: {decodeName}')
+        print(f'IP Address: {decodeIP}')
+        print(f'Port Number: {decodePort}')
+        print(f'State: {state}')
+        print(f'Values are stored')
+        # update return code statement and send it back to client
+        returnCode = "SUCCESS"
+        serverSocket.sendto(returnCode.encode(), clientAddress)
 
-    # return success message to client
-    serverSocket.sendto(success.encode(), clientAddress)
+    # checks if username exists in the array. if it does,
+    # then return FAILURE to indicate that register function
+    # failed to create new user
+    for user in arr:
+        if user.userName == decodeName or user.portNum == decodePort:
+            returnCode = "FAILURE"
+            serverSocket.sendto(returnCode.encode(), clientAddress)
+            valid = False
+
+    # checks if valid is true if the above for loop changed it
+    if valid == True:
+        # add decoded information to array via userInfo
+        arr.append(UserInfo(decodeName, decodeIP, decodePort, state))
+        # print statements
+        print(f'Username: {decodeName}')
+        print(f'IP Address: {decodeIP}')
+        print(f'Port Number: {decodePort}')
+        print(f'State: {state}')
+        print(f'Values are stored')
+        # update return code statement and send it back to client
+        returnCode = "SUCCESS"
+        serverSocket.sendto(returnCode.encode(), clientAddress)
 
 
 def server_setupDHT():
-    print(2)
+    # receive n and username from client
+    setupN, clientAddress = serverSocket.recvfrom(2048)
+    setupUserName, clientAddress = serverSocket.recvfrom(2048)
+
+    # random boolean statement set to false by default
+    valid = False
+
+    # decode n and username
+    decodeN = setupN.decode()
+    decodeName = setupUserName.decode()
+
+    for user in arr:
+        if user.userName == decodeName and decodeN >= len(arr):
+            valid = True
 
 
 def server_completeDHT():
