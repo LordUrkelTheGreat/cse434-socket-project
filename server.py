@@ -1,4 +1,5 @@
 from socket import *
+import sys
 
 serverPort = 11050
 serverSocket = socket(AF_INET, SOCK_DGRAM)
@@ -6,6 +7,7 @@ serverSocket.bind(('', serverPort))
 print("RUNNING")
 
 arr = []
+# terminalIP = sys.argv[1]
 
 
 class UserInfo:
