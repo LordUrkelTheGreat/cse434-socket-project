@@ -115,7 +115,6 @@ def server_setupDHT():
     for f in file:
         line = file.readline()
         data = line.split(",")
-        print(data)
         if len(data) > 1:
             dht.append(DHT(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8].rstrip()))
 
