@@ -111,7 +111,6 @@ def server_setupDHT():
     
     #Set up the .csv file into the dht array
     file = open("StatsCountry.csv", "r")
-    file.readline()
     lines = []
     for f in file:
         line = file.readline()
