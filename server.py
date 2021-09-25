@@ -2,6 +2,7 @@ from socket import *
 import sys
 
 arr = []
+dht = []
 
 # do not delete
 # serverPort = int(sys.argv[1])
@@ -24,7 +25,19 @@ class UserInfo:
         self.ipAddr = ipAddr
         self.portNum = portNum
         self.state = state
+        #self.dhtLineNo =
 
+class DHT:
+    def __init__(self, countryCode, shortName, tableName, longName, twoAlphaCode,currencyUnit,region,wb2Code,latestPopulationCensus):
+        self.countryCode = countryCode
+        self.shortName = shortName
+        self.tableName = tableName
+        self.longName = longName
+        self.twoAlphaCode = twoAlphaCode
+        self.currencyUnit = currencyUnit
+        self.region = region
+        self.wb2Code = wb2Code
+        self.latestPopulationCensus = latestPopulationCensus
 
 def server_register():
     # receive username, ip address, and port number from client
@@ -95,6 +108,17 @@ def server_setupDHT():
     # decode n and username
     decodeN = setupN.decode()
     decodeName = setupUserName.decode()
+    
+    #Set up the .csv file into the dht array
+    file = open("StatsCountry.csv", "r")
+    file.readline()
+    lines = []
+    for f in file:
+        line = file.readline()
+        data = line.split(",")
+        print(data)
+        if len(data) > 1:
+            dht.append(DHT(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8].rstrip()))
 
     for user in arr:
         if user.userName == decodeName and decodeN >= len(arr):
