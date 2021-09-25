@@ -1,13 +1,21 @@
 from socket import *
 import sys
 
-serverPort = 11050
+arr = []
+
+# do not delete
+# serverPort = int(sys.argv[1])
+
+# if serverPort < 11000 or serverPort > 11500:
+#   print("Error: Port number must be in the range of 11000-11500")
+#   exit()
+
+# this is for running on PC not asu general
+serverPort = 11000
+
 serverSocket = socket(AF_INET, SOCK_DGRAM)
 serverSocket.bind(('', serverPort))
 print("RUNNING")
-
-arr = []
-# terminalIP = sys.argv[1]
 
 
 class UserInfo:
@@ -26,6 +34,7 @@ def server_register():
 
     # random boolean statement set to true as default
     valid = True
+    valid1 = False
 
     # decode username, ip address, and port number
     decodeName = regName.decode()
@@ -44,6 +53,7 @@ def server_register():
         print(f'Port Number: {decodePort}')
         print(f'State: {state}')
         print(f'Values are stored')
+        valid1 = True
         # update return code statement and send it back to client
         returnCode = "SUCCESS"
         serverSocket.sendto(returnCode.encode(), clientAddress)
@@ -51,25 +61,27 @@ def server_register():
     # checks if username exists in the array. if it does,
     # then return FAILURE to indicate that register function
     # failed to create new user
-    for user in arr:
-        if user.userName == decodeName or user.portNum == decodePort:
-            returnCode = "FAILURE"
-            serverSocket.sendto(returnCode.encode(), clientAddress)
-            valid = False
+    if valid1 == False:
+        for user in arr:
+            if user.userName == decodeName or user.portNum == decodePort:
+                returnCode = "FAILURE: Username already exists or port number is already in use"
+                serverSocket.sendto(returnCode.encode(), clientAddress)
+                valid = False
+                break
 
     # checks if valid is true if the above for loop changed it
-    if valid == True:
+    # if valid == True:
         # add decoded information to array via userInfo
-        arr.append(UserInfo(decodeName, decodeIP, decodePort, state))
+        # arr.append(UserInfo(decodeName, decodeIP, decodePort, state))
         # print statements
-        print(f'Username: {decodeName}')
-        print(f'IP Address: {decodeIP}')
-        print(f'Port Number: {decodePort}')
-        print(f'State: {state}')
-        print(f'Values are stored')
+        # print(f'Username: {decodeName}')
+        # print(f'IP Address: {decodeIP}')
+        # print(f'Port Number: {decodePort}')
+        # print(f'State: {state}')
+        # print(f'Values are stored')
         # update return code statement and send it back to client
-        returnCode = "SUCCESS"
-        serverSocket.sendto(returnCode.encode(), clientAddress)
+        # returnCode = "SUCCESS"
+        # serverSocket.sendto(returnCode.encode(), clientAddress)
 
 
 def server_setupDHT():
@@ -105,8 +117,33 @@ def server_rebuiltDHT():
     print(6)
 
 
-def server_deregister():
-    print(7)
+def server_deRegister():
+    # receive username from client
+    deRegisterUserName, clientAddress = serverSocket.recvfrom(2048)
+
+    # random boolean variable set to false by default
+    statement = False
+
+    # decode username
+    decodeName = deRegisterUserName.decode()
+
+    # finds user
+    for person in arr:
+        # if the username is the same as the decode name and its state is Free
+        if person.userName == decodeName and person.state == "Free":
+            print(person.ipAddr)
+            # delete user and their info
+            statement = True
+            # update return code statement and send it back to client
+            returnCode = "SUCCESS"
+            serverSocket.sendto(returnCode.encode(), clientAddress)
+            break
+
+    # if the user wasn't found or the state isn't Free
+    if statement == False:
+        # update return code statement and send it back to client
+        returnCode = "FAILURE: The user is a node maintaining the DHT or user doesn't exist"
+        serverSocket.sendto(returnCode.encode(), clientAddress)
 
 
 def server_joinDHT():
@@ -122,13 +159,10 @@ def server_teardownComplete():
 
 
 while True:
-    # message, clientAddress = serverSocket.recvfrom(2048)
-    # modifiedMessage = message.decode().upper()
-    # serverSocket.sendto(modifiedMessage.encode(), clientAddress)
-
     # receives encoded command from client and decodes it
     encodedCommand, clientAddress = serverSocket.recvfrom(2048)
     command = encodedCommand.decode()
+    print(command)
 
     # if the command is from 1-10, it will execute one of the many functions
     if command == "1":
@@ -144,7 +178,7 @@ while True:
     if command == "6":
         server_rebuiltDHT()
     if command == "7":
-        server_deregister()
+        server_deRegister()
     if command == "8":
         server_joinDHT()
     if command == "9":

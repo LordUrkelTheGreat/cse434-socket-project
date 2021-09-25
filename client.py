@@ -2,22 +2,30 @@ from socket import *
 import re
 import sys
 
-serverName = '127.0.0.1'
-serverPort = 11050
 clientSocket = socket(AF_INET, SOCK_DGRAM)
 
 commandInput = ""
 firstRegister = False
+commandNum = ""
+
 # do not delete
-# terminalIP = sys.argv[1]
-# terminalPort = sys.argv[2]
+# serverName = sys.argv[1]
+# serverPort = int(sys.argv[2])
 
+# regex1 = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
+# regexCompile1 = re.compile(regex1)
 
-# message = raw_input('Input lowercase sentence:')
-# clientSocket.sendto(message.encode(), (serverName, serverPort))
-# modifiedMessage, serverAddress = clientSocket.recvfrom(2048)
-# print(modifiedMessage.decode())
-# clientSocket.close()
+# if serverPort < 11000 or serverPort > 11500:
+#   print("Error: Port number must be in the range of 11000-11500")
+#   exit()
+
+# if re.search(regexCompile1, serverName) is None:
+#   print("Error: IP address must be IPv4 dotted decimal notation")
+#   exit()
+
+# this is for running on PC not asu general
+serverName = '127.0.0.1'
+serverPort = 11000
 
 
 # register <user-name> <IPv4-address> <port>
@@ -36,7 +44,7 @@ def client_register():
     # checks if port number is an integer
     if userName.isalpha() and len(userName) <= 15 and re.search(regexCompile, ipAddr) and portNum.isdigit():
         # the 1 lets server know this is a register command
-        clientSocket.sendto("1".encode(), (serverName, serverPort))
+        clientSocket.sendto(commandNum.encode(), (serverName, serverPort))
 
         # send username, ip address, and port number to server
         clientSocket.sendto(userName.encode(), (serverName, serverPort))
@@ -48,7 +56,8 @@ def client_register():
         print(commandMessage.decode())
     else:
         # when the conditions of the above if statement isn't met
-        print("Invalid input. Try again.")
+        print("Error: Username must only contain alphabets, username length must be less than or equal to 15 "
+              "characters, IPv4 address is incorrect, or the port number is not a digit")
 
 
 def client_setupDHT():
@@ -57,11 +66,28 @@ def client_setupDHT():
     userName = commandInput[2]
 
     # the 2 lets the server know this is the setup-dht command
-    clientSocket.sendto("2".encode(), (serverName, serverPort))
+    clientSocket.sendto(commandNum.encode(), (serverName, serverPort))
 
+    # sends the n and username to server
     clientSocket.sendto(n.encode(), (serverName, serverPort))
     clientSocket.sendto(userName.encode(), (serverName, serverPort))
 
+    # command message returned and printed
+    commandMessage, serverAddress = clientSocket.recvfrom(2048)
+    print(commandMessage.decode())
+
+
+def client_deRegister():
+    # command input is stored into username
+    userName = commandInput[1]
+
+    # the 7 lets the server know this is the deregister command
+    clientSocket.sendto(commandNum.encode(), (serverName, serverPort))
+
+    # sends the username to the server
+    clientSocket.sendto(userName.encode(), (serverName, serverPort))
+
+    # command message returned and printed
     commandMessage, serverAddress = clientSocket.recvfrom(2048)
     print(commandMessage.decode())
 
@@ -72,8 +98,13 @@ while True:
 
     if commandInput[0] == "register":
         firstRegister = True
+        commandNum = "1"
         client_register()
     elif commandInput[0] == "setup-dht" and firstRegister == True:
+        commandNum = "2"
         client_setupDHT()
+    elif commandInput[0] == "de-register" and firstRegister == True:
+        commandNum = "7"
+        client_deRegister()
     else:
         print("Please enter command correctly or use the register command first.")
