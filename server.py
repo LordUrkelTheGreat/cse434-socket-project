@@ -2,7 +2,6 @@ from socket import *
 import sys
 
 arr = []
-dht = []
 
 # do not delete
 # serverPort = int(sys.argv[1])
@@ -18,6 +17,9 @@ serverSocket = socket(AF_INET, SOCK_DGRAM)
 serverSocket.bind(('', serverPort))
 print("RUNNING")
 
+dht = []
+lockout = []
+
 
 class UserInfo:
     def __init__(self, userName, ipAddr, portNum, state):
@@ -25,7 +27,7 @@ class UserInfo:
         self.ipAddr = ipAddr
         self.portNum = portNum
         self.state = state
-        #self.dhtLineNo =
+
 
 class DHT:
     def __init__(self, countryCode, shortName, tableName, longName, twoAlphaCode,currencyUnit,region,wb2Code,latestPopulationCensus):
@@ -38,6 +40,7 @@ class DHT:
         self.region = region
         self.wb2Code = wb2Code
         self.latestPopulationCensus = latestPopulationCensus
+
 
 def server_register():
     # receive username, ip address, and port number from client
@@ -68,7 +71,7 @@ def server_register():
         print(f'Values are stored')
         valid1 = True
         # update return code statement and send it back to client
-        returnCode = "SUCCESS"
+        returnCode = "SUCCESS: User registered"
         serverSocket.sendto(returnCode.encode(), clientAddress)
 
     # checks if username exists in the array. if it does,
@@ -103,28 +106,59 @@ def server_setupDHT():
     setupUserName, clientAddress = serverSocket.recvfrom(2048)
 
     # random boolean statement set to false by default
-    valid = False
+    valid = True
 
     # decode n and username
     decodeN = setupN.decode()
     decodeName = setupUserName.decode()
-    
-    #Set up the .csv file into the dht array
-    file = open("StatsCountry.csv", "r")
-    lines = []
-    for f in file:
-        line = file.readline()
-        data = line.split(",")
-        if len(data) > 1:
-            dht.append(DHT(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8].rstrip()))
 
-    for user in arr:
-        if user.userName == decodeName and decodeN >= len(arr):
-            valid = True
+    if lockout:
+        returnCode = "FAILURE"
+        serverSocket.sendto(returnCode.encode(), clientAddress)
+    else:
+        if valid:
+            file = open("StatsCountry.csv", "r")
+
+            for f in file:
+                line = file.readline()
+                data = line.split(",")
+                if len(data) > 1:
+                    dht.append(DHT(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8].rstrip()))
+
+            for user in arr:
+                if user.userName == decodeName:
+                    user.state = "LEADER"
+                    lockout.append(1)
 
 
 def server_completeDHT():
-    print(3)
+    # receive username from client
+    completeUserName, clientAddress = serverSocket.recvfrom(2048)
+
+    # random boolean statement set to false by default
+    valid = True
+
+    # decode username
+    decodeName = completeUserName.decode()
+
+    for user in arr:
+        if user.state == "LEADER" and user.userName == decodeName:
+            if dht:
+                valid = True
+            else:
+                returnCode = "FAILURE: DHT not setup"
+                serverSocket.sendto(returnCode.encode(), clientAddress)
+                valid = False
+        else:
+            returnCode = "FAILURE: User is not the leader or User isn't registered"
+            serverSocket.sendto(returnCode.encode(), clientAddress)
+            valid = False
+
+    if valid == True:
+        returnCode = "SUCCESS"
+        serverSocket.sendto(returnCode.encode(), clientAddress)
+
+    # print(3) #test if command is sent
 
 
 def server_queryDHT():
@@ -153,11 +187,14 @@ def server_deRegister():
     for person in arr:
         # if the username is the same as the decode name and its state is Free
         if person.userName == decodeName and person.state == "Free":
-            print(person.ipAddr)
             # delete user and their info
+            # add decoded information to array via userInfo
+            # arr.append(UserInfo(decodeName, decodeIP, decodePort, state))
+            arr.remove(person)
+            # print(person)
             statement = True
             # update return code statement and send it back to client
-            returnCode = "SUCCESS"
+            returnCode = "SUCCESS: User de-registered"
             serverSocket.sendto(returnCode.encode(), clientAddress)
             break
 
@@ -184,7 +221,7 @@ while True:
     # receives encoded command from client and decodes it
     encodedCommand, clientAddress = serverSocket.recvfrom(2048)
     command = encodedCommand.decode()
-    print(command)
+    print(f'Command Number: {command}')
 
     # if the command is from 1-10, it will execute one of the many functions
     if command == "1":
