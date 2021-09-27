@@ -1,7 +1,7 @@
 from socket import *
 import re
 import sys
-
+import threading
 
 # this is used to check if the IPv4 address is valid
 regex = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
@@ -41,7 +41,7 @@ def client_register():
     # checks if port number is an integer
     if userName.isalpha() and len(userName) <= 15 and re.search(regexCompile, ipAddr) and portNum.isdigit():
         # the 1 lets server know this is a register command
-        clientSocket.sendto(commandNum.encode(), (serverName, serverPort))
+        clientSocket.sendto("1".encode(), (serverName, serverPort))
 
         # send username, ip address, and port number to server
         clientSocket.sendto(userName.encode(), (serverName, serverPort))
@@ -63,7 +63,7 @@ def client_setupDHT():
     userName = commandInput[2]
 
     # the 2 lets the server know this is the setup-dht command
-    clientSocket.sendto(commandNum.encode(), (serverName, serverPort))
+    clientSocket.sendto("2".encode(), (serverName, serverPort))
 
     # sends the n and username to server
     clientSocket.sendto(n.encode(), (serverName, serverPort))
@@ -93,8 +93,8 @@ def client_deRegister():
     # command input is stored into username
     userName = commandInput[1]
 
-    # the 7 lets the server know this is the deregister command
-    clientSocket.sendto(commandNum.encode(), (serverName, serverPort))
+    # the 7 lets the server know this is the de-register command
+    clientSocket.sendto("7".encode(), (serverName, serverPort))
 
     # sends the username to the server
     clientSocket.sendto(userName.encode(), (serverName, serverPort))
@@ -105,6 +105,7 @@ def client_deRegister():
 
 
 while True:
+    print()
     print("Please enter command")
     commandInput = list(map(str, input().split()))
 

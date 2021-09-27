@@ -1,5 +1,4 @@
 from socket import *
-import threading
 import sys
 
 dht = []
@@ -61,22 +60,6 @@ def server_register():
     decodePort = regPort.decode()
     state = "Free"
 
-    # Truth Value Testing method where the array variable's value is inverted
-    # to make the condition true
-    if not arrayStorage:
-        # add decoded information to array via userInfo
-        arrayStorage.append(UserInfo(decodeName, decodeIP, decodePort, state))
-        # print statements
-        print(f'Username: {decodeName}')
-        print(f'IP Address: {decodeIP}')
-        print(f'Port Number: {decodePort}')
-        print(f'State: {state}')
-        print(f'Values are stored')
-        valid1 = True
-        # update return code statement and send it back to client
-        returnCode = "SUCCESS: User registered"
-        serverSocket.sendto(returnCode.encode(), clientAddressRegister)
-
     # checks if username exists in the array. if it does,
     # then return FAILURE to indicate that register function
     # failed to create new user
@@ -85,8 +68,19 @@ def server_register():
             if user.userName == decodeName or user.portNum == decodePort:
                 returnCode = "FAILURE: Username already exists or port number is already in use"
                 serverSocket.sendto(returnCode.encode(), clientAddressRegister)
-                # valid = False
-                break
+                return
+
+    # add decoded information to array via userInfo
+    arrayStorage.append(UserInfo(decodeName, decodeIP, decodePort, state))
+    # print statements
+    print(f'Username: {decodeName}')
+    print(f'IP Address: {decodeIP}')
+    print(f'Port Number: {decodePort}')
+    print(f'State: {state}')
+    print(f'Values are stored')
+    # update return code statement and send it back to client
+    returnCode = "SUCCESS: User registered"
+    serverSocket.sendto(returnCode.encode(), clientAddressRegister)
 
 
 def server_setupDHT():
@@ -98,26 +92,27 @@ def server_setupDHT():
     valid = True
 
     # decode n and username
-    decodeN = setupN.decode()
+    decodeN = int(setupN.decode())
     decodeName = setupUserName.decode()
 
     if lockout:
-        returnCode = "FAILURE"
+        returnCode = "FAILURE: setup DHT is locked out"
         serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
     else:
-        if valid:
-            file = open("StatsCountry.csv", "r")
+        if valid is True and decodeN >= 2:
+            # file = open("StatsCountry.csv", "r")
 
-            for f in file:
-                line = file.readline()
-                data = line.split(",")
-                if len(data) > 1:
-                    dht.append(
-                        DHT(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8].rstrip()))
+            # for f in file:
+                # line = file.readline()
+                # data = line.split(",")
+                # if len(data) > 1:
+                    # dht.append(
+                        # DHT(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8].rstrip()))
 
             for user in arrayStorage:
                 if user.userName == decodeName:
-                    user.state = "LEADER"
+                    # print(30)
+                    user.state == "Leader"
                     lockout.append(1)
 
 
@@ -132,7 +127,7 @@ def server_completeDHT():
     decodeName = completeUserName.decode()
 
     for user in arrayStorage:
-        if user.state == "LEADER" and user.userName == decodeName:
+        if user.state == "Leader" and user.userName == decodeName:
             if dht:
                 valid = True
             else:
@@ -211,21 +206,11 @@ def thread0():
     print(11)
 
 
-# x1 = threading.Thread(target=server_register())
-# x2 = threading.Thread(target=server_setupDHT())
-# x3 = threading.Thread(target=server_completeDHT())
-# x7 = threading.Thread(target=server_deRegister())
-
-# x1.start()
-# x2.start()
-# x3.start()
-# x7.start()
-
-
 while True:
     # receives encoded command from client and decodes it
     encodedCommand, clientAddress = serverSocket.recvfrom(2048)
     command = encodedCommand.decode()
+    print()
     print(f'Command Number: {command}')
 
     # if the command is from 1-10, it will execute one of the many functions
