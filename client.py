@@ -2,30 +2,31 @@ from socket import *
 import re
 import sys
 
-clientSocket = socket(AF_INET, SOCK_DGRAM)
 
+# this is used to check if the IPv4 address is valid
+regex = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
+regexCompile = re.compile(regex)
+
+clientSocket = socket(AF_INET, SOCK_DGRAM)
 commandInput = ""
 firstRegister = False
 commandNum = ""
 
 # do not delete
-# serverName = sys.argv[1]
-# serverPort = int(sys.argv[2])
-
-# regex1 = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
-# regexCompile1 = re.compile(regex1)
-
-# if serverPort < 11000 or serverPort > 11500:
-#   print("Error: Port number must be in the range of 11000-11500")
-#   exit()
-
-# if re.search(regexCompile1, serverName) is None:
-#   print("Error: IP address must be IPv4 dotted decimal notation")
-#   exit()
+serverName = sys.argv[1]
+serverPort = int(sys.argv[2])
 
 # this is for running on PC not asu general
-serverName = '127.0.0.1'
-serverPort = 11000
+# serverName = '127.0.0.1'
+# serverPort = 11000
+
+if serverPort < 11000 or serverPort > 11500:
+    print("Error: Port number must be in the range of 11000-11500")
+    exit()
+
+if re.search(regexCompile, serverName) is None:
+    print("Error: IP address must be IPv4 dotted decimal notation")
+    exit()
 
 
 # register <user-name> <IPv4-address> <port>
@@ -34,10 +35,6 @@ def client_register():
     userName = commandInput[1]
     ipAddr = commandInput[2]
     portNum = commandInput[3]
-
-    # this is used to check if the IPv4 address is valid
-    regex = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
-    regexCompile = re.compile(regex)
 
     # checks if username is an alphabetic string and less than or equal to a length of 15
     # checks if IPv4 address is valid using regex
@@ -115,13 +112,13 @@ while True:
         firstRegister = True
         commandNum = "1"
         client_register()
-    elif commandInput[0] == "setup-dht" and firstRegister == True:
+    elif commandInput[0] == "setup-dht" and firstRegister is True:
         commandNum = "2"
         client_setupDHT()
-    elif commandInput[0] == "dht-complete" and firstRegister == True:
+    elif commandInput[0] == "dht-complete" and firstRegister is True:
         commandNum = "3"
         client_completeDHT()
-    elif commandInput[0] == "de-register" and firstRegister == True:
+    elif commandInput[0] == "de-register" and firstRegister is True:
         commandNum = "7"
         client_deRegister()
     else:

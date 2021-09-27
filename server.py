@@ -1,24 +1,26 @@
 from socket import *
+import threading
 import sys
-
-arr = []
-
-# do not delete
-# serverPort = int(sys.argv[1])
-
-# if serverPort < 11000 or serverPort > 11500:
-#   print("Error: Port number must be in the range of 11000-11500")
-#   exit()
-
-# this is for running on PC not asu general
-serverPort = 11000
-
-serverSocket = socket(AF_INET, SOCK_DGRAM)
-serverSocket.bind(('', serverPort))
-print("RUNNING")
 
 dht = []
 lockout = []
+processing = []
+arrayStorage = []
+
+# do not delete
+serverPort = int(sys.argv[1])
+
+# this is for running on PC not asu general
+# serverPort = 11000
+
+if serverPort < 11000 or serverPort > 11499:
+    print("Error: Port number must be in the range of 11000-11500")
+    exit()
+
+serverSocket = socket(AF_INET, SOCK_DGRAM)
+serverSocket.bind(('', serverPort))
+print(serverSocket.getsockname())
+print("RUNNING")
 
 
 class UserInfo:
@@ -30,7 +32,8 @@ class UserInfo:
 
 
 class DHT:
-    def __init__(self, countryCode, shortName, tableName, longName, twoAlphaCode,currencyUnit,region,wb2Code,latestPopulationCensus):
+    def __init__(self, countryCode, shortName, tableName, longName, twoAlphaCode, currencyUnit, region, wb2Code,
+                 latestPopulationCensus):
         self.countryCode = countryCode
         self.shortName = shortName
         self.tableName = tableName
@@ -44,12 +47,12 @@ class DHT:
 
 def server_register():
     # receive username, ip address, and port number from client
-    regName, clientAddress = serverSocket.recvfrom(2048)
-    regIP, clientAddress = serverSocket.recvfrom(2048)
-    regPort, clientAddress = serverSocket.recvfrom(2048)
+    regName, clientAddressRegister = serverSocket.recvfrom(2048)
+    regIP, clientAddressRegister = serverSocket.recvfrom(2048)
+    regPort, clientAddressRegister = serverSocket.recvfrom(2048)
 
     # random boolean statement set to true as default
-    valid = True
+    # valid = True
     valid1 = False
 
     # decode username, ip address, and port number
@@ -60,9 +63,9 @@ def server_register():
 
     # Truth Value Testing method where the array variable's value is inverted
     # to make the condition true
-    if not arr:
+    if not arrayStorage:
         # add decoded information to array via userInfo
-        arr.append(UserInfo(decodeName, decodeIP, decodePort, state))
+        arrayStorage.append(UserInfo(decodeName, decodeIP, decodePort, state))
         # print statements
         print(f'Username: {decodeName}')
         print(f'IP Address: {decodeIP}')
@@ -72,38 +75,24 @@ def server_register():
         valid1 = True
         # update return code statement and send it back to client
         returnCode = "SUCCESS: User registered"
-        serverSocket.sendto(returnCode.encode(), clientAddress)
+        serverSocket.sendto(returnCode.encode(), clientAddressRegister)
 
     # checks if username exists in the array. if it does,
     # then return FAILURE to indicate that register function
     # failed to create new user
-    if valid1 == False:
-        for user in arr:
+    if valid1 is False:
+        for user in arrayStorage:
             if user.userName == decodeName or user.portNum == decodePort:
                 returnCode = "FAILURE: Username already exists or port number is already in use"
-                serverSocket.sendto(returnCode.encode(), clientAddress)
-                valid = False
+                serverSocket.sendto(returnCode.encode(), clientAddressRegister)
+                # valid = False
                 break
-
-    # checks if valid is true if the above for loop changed it
-    # if valid == True:
-        # add decoded information to array via userInfo
-        # arr.append(UserInfo(decodeName, decodeIP, decodePort, state))
-        # print statements
-        # print(f'Username: {decodeName}')
-        # print(f'IP Address: {decodeIP}')
-        # print(f'Port Number: {decodePort}')
-        # print(f'State: {state}')
-        # print(f'Values are stored')
-        # update return code statement and send it back to client
-        # returnCode = "SUCCESS"
-        # serverSocket.sendto(returnCode.encode(), clientAddress)
 
 
 def server_setupDHT():
     # receive n and username from client
-    setupN, clientAddress = serverSocket.recvfrom(2048)
-    setupUserName, clientAddress = serverSocket.recvfrom(2048)
+    setupN, clientAddressSetUp = serverSocket.recvfrom(2048)
+    setupUserName, clientAddressSetUp = serverSocket.recvfrom(2048)
 
     # random boolean statement set to false by default
     valid = True
@@ -114,7 +103,7 @@ def server_setupDHT():
 
     if lockout:
         returnCode = "FAILURE"
-        serverSocket.sendto(returnCode.encode(), clientAddress)
+        serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
     else:
         if valid:
             file = open("StatsCountry.csv", "r")
@@ -123,9 +112,10 @@ def server_setupDHT():
                 line = file.readline()
                 data = line.split(",")
                 if len(data) > 1:
-                    dht.append(DHT(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8].rstrip()))
+                    dht.append(
+                        DHT(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8].rstrip()))
 
-            for user in arr:
+            for user in arrayStorage:
                 if user.userName == decodeName:
                     user.state = "LEADER"
                     lockout.append(1)
@@ -133,7 +123,7 @@ def server_setupDHT():
 
 def server_completeDHT():
     # receive username from client
-    completeUserName, clientAddress = serverSocket.recvfrom(2048)
+    completeUserName, clientAddressComplete = serverSocket.recvfrom(2048)
 
     # random boolean statement set to false by default
     valid = True
@@ -141,22 +131,22 @@ def server_completeDHT():
     # decode username
     decodeName = completeUserName.decode()
 
-    for user in arr:
+    for user in arrayStorage:
         if user.state == "LEADER" and user.userName == decodeName:
             if dht:
                 valid = True
             else:
                 returnCode = "FAILURE: DHT not setup"
-                serverSocket.sendto(returnCode.encode(), clientAddress)
+                serverSocket.sendto(returnCode.encode(), clientAddressComplete)
                 valid = False
         else:
             returnCode = "FAILURE: User is not the leader or User isn't registered"
-            serverSocket.sendto(returnCode.encode(), clientAddress)
+            serverSocket.sendto(returnCode.encode(), clientAddressComplete)
             valid = False
 
-    if valid == True:
+    if valid is True:
         returnCode = "SUCCESS"
-        serverSocket.sendto(returnCode.encode(), clientAddress)
+        serverSocket.sendto(returnCode.encode(), clientAddressComplete)
 
     # print(3) #test if command is sent
 
@@ -175,7 +165,7 @@ def server_rebuiltDHT():
 
 def server_deRegister():
     # receive username from client
-    deRegisterUserName, clientAddress = serverSocket.recvfrom(2048)
+    deRegisterUserName, clientAddressDeRegister = serverSocket.recvfrom(2048)
 
     # random boolean variable set to false by default
     statement = False
@@ -184,25 +174,25 @@ def server_deRegister():
     decodeName = deRegisterUserName.decode()
 
     # finds user
-    for person in arr:
+    for person in arrayStorage:
         # if the username is the same as the decode name and its state is Free
         if person.userName == decodeName and person.state == "Free":
             # delete user and their info
             # add decoded information to array via userInfo
             # arr.append(UserInfo(decodeName, decodeIP, decodePort, state))
-            arr.remove(person)
+            arrayStorage.remove(person)
             # print(person)
             statement = True
             # update return code statement and send it back to client
             returnCode = "SUCCESS: User de-registered"
-            serverSocket.sendto(returnCode.encode(), clientAddress)
+            serverSocket.sendto(returnCode.encode(), clientAddressDeRegister)
             break
 
     # if the user wasn't found or the state isn't Free
-    if statement == False:
+    if statement is False:
         # update return code statement and send it back to client
         returnCode = "FAILURE: The user is a node maintaining the DHT or user doesn't exist"
-        serverSocket.sendto(returnCode.encode(), clientAddress)
+        serverSocket.sendto(returnCode.encode(), clientAddressDeRegister)
 
 
 def server_joinDHT():
@@ -215,6 +205,21 @@ def server_teardownDHT():
 
 def server_teardownComplete():
     print(10)
+
+
+def thread0():
+    print(11)
+
+
+# x1 = threading.Thread(target=server_register())
+# x2 = threading.Thread(target=server_setupDHT())
+# x3 = threading.Thread(target=server_completeDHT())
+# x7 = threading.Thread(target=server_deRegister())
+
+# x1.start()
+# x2.start()
+# x3.start()
+# x7.start()
 
 
 while True:
