@@ -1,10 +1,12 @@
 from socket import *
 import sys
 
-dht = []
-lockout = []
-processing = []
-arrayStorage = []
+# dictionaries (don't delete)
+userDict = {}
+dhtDict = {}
+
+# setup DHT lockout
+lockout = False
 
 # do not delete
 serverPort = int(sys.argv[1])
@@ -20,14 +22,6 @@ serverSocket = socket(AF_INET, SOCK_DGRAM)
 serverSocket.bind(('', serverPort))
 print(serverSocket.getsockname())
 print("RUNNING")
-
-
-class UserInfo:
-    def __init__(self, userName, ipAddr, portNum, state):
-        self.userName = userName
-        self.ipAddr = ipAddr
-        self.portNum = portNum
-        self.state = state
 
 
 class DHT:
@@ -50,9 +44,8 @@ def server_register():
     regIP, clientAddressRegister = serverSocket.recvfrom(2048)
     regPort, clientAddressRegister = serverSocket.recvfrom(2048)
 
-    # random boolean statement set to true as default
-    # valid = True
-    valid1 = False
+    # random boolean statement set to false as default
+    valid = False
 
     # decode username, ip address, and port number
     decodeName = regName.decode()
@@ -60,24 +53,36 @@ def server_register():
     decodePort = regPort.decode()
     state = "Free"
 
-    # checks if username exists in the array. if it does,
+    # checks if username exists in the dictionary. if it does,
     # then return FAILURE to indicate that register function
     # failed to create new user
-    if valid1 is False:
-        for user in arrayStorage:
-            if user.userName == decodeName or user.portNum == decodePort:
+    if valid is False:
+        # checks if username is registered
+        for key in userDict.items():
+            # check if decodeName is in dictionary
+            if decodeName in key:
+                returnCode = "FAILURE: Username already exists or port number is already in use"
+                serverSocket.sendto(returnCode.encode(), clientAddressRegister)
+                return
+        # checks if port number is registered
+        for value in userDict.values():
+            # check if decodePort is in dictionary
+            if decodePort in value:
                 returnCode = "FAILURE: Username already exists or port number is already in use"
                 serverSocket.sendto(returnCode.encode(), clientAddressRegister)
                 return
 
-    # add decoded information to array via userInfo
-    arrayStorage.append(UserInfo(decodeName, decodeIP, decodePort, state))
+    # add decoded information to dictionary
+    # arrayStorage.append(UserInfo(decodeName, decodeIP, decodePort, state))
+    userDict[decodeName] = decodeIP, decodePort, state
+
     # print statements
     print(f'Username: {decodeName}')
     print(f'IP Address: {decodeIP}')
     print(f'Port Number: {decodePort}')
     print(f'State: {state}')
     print(f'Values are stored')
+
     # update return code statement and send it back to client
     returnCode = "SUCCESS: User registered"
     serverSocket.sendto(returnCode.encode(), clientAddressRegister)
@@ -88,62 +93,71 @@ def server_setupDHT():
     setupN, clientAddressSetUp = serverSocket.recvfrom(2048)
     setupUserName, clientAddressSetUp = serverSocket.recvfrom(2048)
 
-    # random boolean statement set to false by default
+    # random boolean statement set to true by default
     valid = True
 
     # decode n and username
     decodeN = int(setupN.decode())
     decodeName = setupUserName.decode()
 
-    if lockout:
+    if lockout is True:
         returnCode = "FAILURE: setup DHT is locked out"
         serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
     else:
         if valid is True and decodeN >= 2:
+            print(decodeName)
             # file = open("StatsCountry.csv", "r")
 
             # for f in file:
-                # line = file.readline()
-                # data = line.split(",")
-                # if len(data) > 1:
-                    # dht.append(
-                        # DHT(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8].rstrip()))
+            # line = file.readline()
+            # data = line.split(",")
+            # if len(data) > 1:
+            # dht.append(
+            # DHT(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8].rstrip()))
 
-            for user in arrayStorage:
-                if user.userName == decodeName:
-                    # print(30)
-                    user.state == "Leader"
-                    lockout.append(1)
+            # for user in arrayStorage:
+            # if user.userName == decodeName:
+            # print(30)
+            # user.state == "Leader"
+            # lockout.append(1)
 
 
 def server_completeDHT():
     # receive username from client
     completeUserName, clientAddressComplete = serverSocket.recvfrom(2048)
 
-    # random boolean statement set to false by default
+    # random boolean statement set to true by default
     valid = True
+
+    # if the function doesn't properly execute for some reason
+    returnCode = "FAILURE: complete DHT failed to function properly"
 
     # decode username
     decodeName = completeUserName.decode()
 
-    for user in arrayStorage:
-        if user.state == "Leader" and user.userName == decodeName:
-            if dht:
-                valid = True
+    # search through dictionary
+    for key, value in userDict.items():
+        # if the user is the key
+        if decodeName in key:
+            # if the user state is Leader
+            if "Leader" in value:
+                # if dhtDict exists
+                if dhtDict:
+                    valid = True
+                else:
+                    returnCode = "FAILURE: DHT not setup"
+                    valid = False
             else:
-                returnCode = "FAILURE: DHT not setup"
-                serverSocket.sendto(returnCode.encode(), clientAddressComplete)
+                returnCode = "FAILURE: User is not the leader"
                 valid = False
         else:
-            returnCode = "FAILURE: User is not the leader or User isn't registered"
-            serverSocket.sendto(returnCode.encode(), clientAddressComplete)
+            returnCode = "FAILURE: User isn't registered"
             valid = False
 
     if valid is True:
         returnCode = "SUCCESS"
-        serverSocket.sendto(returnCode.encode(), clientAddressComplete)
 
-    # print(3) #test if command is sent
+    serverSocket.sendto(returnCode.encode(), clientAddressComplete)
 
 
 def server_queryDHT():
@@ -169,19 +183,17 @@ def server_deRegister():
     decodeName = deRegisterUserName.decode()
 
     # finds user
-    for person in arrayStorage:
+    for key, value in userDict.items():
         # if the username is the same as the decode name and its state is Free
-        if person.userName == decodeName and person.state == "Free":
-            # delete user and their info
-            # add decoded information to array via userInfo
-            # arr.append(UserInfo(decodeName, decodeIP, decodePort, state))
-            arrayStorage.remove(person)
-            # print(person)
-            statement = True
-            # update return code statement and send it back to client
-            returnCode = "SUCCESS: User de-registered"
-            serverSocket.sendto(returnCode.encode(), clientAddressDeRegister)
-            break
+        if decodeName in key:
+            if "Free" in value:
+                # delete user and their info
+                userDict.pop(key)
+                statement = True
+                # update return code statement and send it back to client
+                returnCode = "SUCCESS: User de-registered"
+                serverSocket.sendto(returnCode.encode(), clientAddressDeRegister)
+                break
 
     # if the user wasn't found or the state isn't Free
     if statement is False:
