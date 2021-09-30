@@ -1,9 +1,11 @@
 from socket import *
 import sys
+import csv
 
 # dictionaries (don't delete)
 userDict = {}
 dhtDict = {}
+countriesDict = {}
 
 # setup DHT lockout
 lockout = False
@@ -22,20 +24,6 @@ serverSocket = socket(AF_INET, SOCK_DGRAM)
 serverSocket.bind(('', serverPort))
 print(serverSocket.getsockname())
 print("RUNNING")
-
-
-class DHT:
-    def __init__(self, countryCode, shortName, tableName, longName, twoAlphaCode, currencyUnit, region, wb2Code,
-                 latestPopulationCensus):
-        self.countryCode = countryCode
-        self.shortName = shortName
-        self.tableName = tableName
-        self.longName = longName
-        self.twoAlphaCode = twoAlphaCode
-        self.currencyUnit = currencyUnit
-        self.region = region
-        self.wb2Code = wb2Code
-        self.latestPopulationCensus = latestPopulationCensus
 
 
 def server_register():
@@ -61,14 +49,14 @@ def server_register():
         for key in userDict.items():
             # check if decodeName is in dictionary
             if decodeName in key:
-                returnCode = "FAILURE: Username already exists or port number is already in use"
+                returnCode = "FAILURE: Username already exists"
                 serverSocket.sendto(returnCode.encode(), clientAddressRegister)
                 return
         # checks if port number is registered
         for value in userDict.values():
             # check if decodePort is in dictionary
             if decodePort in value:
-                returnCode = "FAILURE: Username already exists or port number is already in use"
+                returnCode = "FAILURE: Port number is already in use"
                 serverSocket.sendto(returnCode.encode(), clientAddressRegister)
                 return
 
@@ -106,20 +94,23 @@ def server_setupDHT():
     else:
         if valid is True and decodeN >= 2:
             print(decodeName)
-            # file = open("StatsCountry.csv", "r")
 
-            # for f in file:
-            # line = file.readline()
-            # data = line.split(",")
-            # if len(data) > 1:
-            # dht.append(
-            # DHT(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8].rstrip()))
+            # open csv file
+            file = open('StatsCountry.csv', 'r', encoding='unicode_escape')
+            # read csv values
+            reader = csv.reader(file)
+            # skip header
+            next(reader, None)
+            # store csv values separately as key-value pairs in a dictionary
+            for row in reader:
+                countriesDict['{\'Country Code\': \'' + row[0] + '\'}'] = {'Short Name': row[1], 'Table Name': row[2], 'Long Name': row[3], '2-Alpha Code': row[4], 'Currency Unit': row[5], 'Region': row[6], 'WB-2 Code': row[7], 'Latest Population Census': row[8]}
 
-            # for user in arrayStorage:
-            # if user.userName == decodeName:
-            # print(30)
-            # user.state == "Leader"
-            # lockout.append(1)
+            # print keys and values
+            # for key, value in countriesDict.items():
+                # print(key, value)
+
+            # print dictionary
+            # print(countriesDict)
 
 
 def server_completeDHT():
