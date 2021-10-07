@@ -59,6 +59,9 @@ def setupDHTdict():
 
         pos = sumOfChar % 353
         id = (pos % dhtSize) - 1
+        
+        #Calculate pos and id for all values in countries Dictionary and store dhtdict with collisions
+        
         print(id)
         # if rowIndex == 0:
         #    dhtDict[id] = decodeName
