@@ -25,6 +25,8 @@ print(value in myDict[key])         # true if string is found, false if not foun
 # print value
 print(myDict.values())      # only prints values
 print(myDict.items())       # prints values with their respective keys
+print(myDict.keys())   # prints the names of the keys
+print(myDict["Name"][0])    # prints a specific index of a key
 
 # delete element from dictionary
 value = "tucson"
