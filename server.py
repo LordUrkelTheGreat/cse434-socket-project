@@ -7,6 +7,9 @@ userDict = {}
 dhtDict = {}
 countriesDict = {}
 
+# number of registered users
+numOfUsers = 0
+
 # setup DHT lockout
 lockout = False
 
@@ -61,14 +64,17 @@ def server_register():
                 return
 
     # add decoded information to dictionary
-    # arrayStorage.append(UserInfo(decodeName, decodeIP, decodePort, state))
-    userDict[decodeName] = decodeIP, decodePort, state
+    userDict[decodeName] = [decodeIP, decodePort, state]
+
+    # keeps track of how many users are registered by adding 1 to itself
+    global numOfUsers
+    numOfUsers += 1
 
     # print statements
     print(f'Username: {decodeName}')
-    print(f'IP Address: {decodeIP}')
-    print(f'Port Number: {decodePort}')
-    print(f'State: {state}')
+    print(f'IP Address: {userDict[decodeName][0]}')
+    print(f'Port Number: {userDict[decodeName][1]}')
+    print(f'State: {userDict[decodeName][2]}')
     print(f'Values are stored')
 
     # update return code statement and send it back to client
@@ -81,44 +87,82 @@ def server_setupDHT():
     setupN, clientAddressSetUp = serverSocket.recvfrom(2048)
     setupUserName, clientAddressSetUp = serverSocket.recvfrom(2048)
 
-    # random boolean statement set to true by default
+    # random boolean statements set to true and false by default
     valid = True
+    userInDict = False
 
     # decode n and username
     decodeN = int(setupN.decode())
     decodeName = setupUserName.decode()
 
+    # check if user is register and set to true if found
+    for key in userDict.keys():
+        if decodeName in key:
+            userInDict = True
+
+    # if user is not registered return with failure
+    if userInDict is False:
+        returnCode = "FAILURE: user is not registered"
+        serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
+        return
+
+    # if lockout is true return with failure
     if lockout is True:
         returnCode = "FAILURE: setup DHT is locked out"
         serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
+        return
+    # if lockout is false continue
     else:
-        if valid is True and decodeN >= 2:
-            print(decodeName)
+        # if random boolean statement is true
+        if valid is True:
+            # if n is greater than or equal to 2
+            if decodeN >= 2:
+                # if n is less than or equal to number of registered users
+                if decodeN <= numOfUsers:
+                    # change the user's state from free to leader
+                    newState = "Leader"
+                    userDict[decodeName][2] = newState
 
-            # open csv file
-            file = open('StatsCountry.csv', 'r', encoding='unicode_escape')
-            # read csv values
-            reader = csv.reader(file)
-            # skip header
-            next(reader, None)
-            # store csv values separately as key-value pairs in a dictionary
-            for row in reader:
-                countriesDict['{\'Country Code\': \'' + row[0] + '\'}'] = {'Short Name': row[1], 'Table Name': row[2], 'Long Name': row[3], '2-Alpha Code': row[4], 'Currency Unit': row[5], 'Region': row[6], 'WB-2 Code': row[7], 'Latest Population Census': row[8]}
+                    # storing csv values into a dictionary of lists (DO NOT DELETE)
+                    # open csv file
+                    file = open('StatsCountry.csv', 'r', encoding='unicode_escape')
+                    # read csv values
+                    reader = csv.reader(file)
+                    # skip header
+                    next(reader, None)
+                    # store csv values separately as key-value pairs in a dictionary
+                    for row in reader:
+                        countriesDict[row[0]] = [row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]]
 
-            # print keys and values
-            # for key, value in countriesDict.items():
-                # print(key, value)
-
-            # print dictionary
-            # print(countriesDict)
+                    # to-do list for this function:
+                    # construct a DHT of size n and have only 1 exist at a time (done) (latter not tested)
+                    # set the state of given username to Leader (done)
+                    # return Failure codes from given conditions (done)
+                    # select n-1 users with a Free state and change their states to InDHT
+                    # assign identifiers and neighbors
+                    # construct the local DHTs
+                        # store csv values into a dictionary of lists (done)
+                        # leader reads line L from the dataset into a record
+                        # leader computes the hash function using the Long Name as the key in 2 steps
+                    # return Success code if DHT has been successfully build
+                # if n is greater than the number of registered users it returns a failure
+                else:
+                    returnCode = "FAILURE: n is bigger than the number of registered users"
+                    serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
+                    return
+            # if n is less than 2 than it returns a failure
+            else:
+                returnCode = "FAILURE: n needs to be greater than or equal to 2"
+                serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
+                return
 
 
 def server_completeDHT():
     # receive username from client
     completeUserName, clientAddressComplete = serverSocket.recvfrom(2048)
 
-    # random boolean statement set to true by default
-    valid = True
+    # random boolean statement set to False by default
+    valid = False
 
     # if the function doesn't properly execute for some reason
     returnCode = "FAILURE: complete DHT failed to function properly"
@@ -146,7 +190,7 @@ def server_completeDHT():
             valid = False
 
     if valid is True:
-        returnCode = "SUCCESS"
+        returnCode = "SUCCESS: DHT has been established"
 
     serverSocket.sendto(returnCode.encode(), clientAddressComplete)
 
@@ -181,6 +225,9 @@ def server_deRegister():
                 # delete user and their info
                 userDict.pop(key)
                 statement = True
+                # keeps track of how many users are registered by subtracting 1 to itself
+                global numOfUsers
+                numOfUsers -= 1
                 # update return code statement and send it back to client
                 returnCode = "SUCCESS: User de-registered"
                 serverSocket.sendto(returnCode.encode(), clientAddressDeRegister)
@@ -203,10 +250,6 @@ def server_teardownDHT():
 
 def server_teardownComplete():
     print(10)
-
-
-def thread0():
-    print(11)
 
 
 while True:

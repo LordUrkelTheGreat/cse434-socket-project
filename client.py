@@ -1,7 +1,6 @@
 from socket import *
 import re
 import sys
-import threading
 
 # this is used to check if the IPv4 address is valid
 regex = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
@@ -119,7 +118,7 @@ while True:
     elif commandInput[0] == "dht-complete" and firstRegister is True:
         commandNum = "3"
         client_completeDHT()
-    elif commandInput[0] == "de-register" and firstRegister is True:
+    elif commandInput[0] == "deregister" and firstRegister is True:
         commandNum = "7"
         client_deRegister()
     else:
