@@ -10,6 +10,9 @@ countriesDict = {}
 # number of registered users
 numOfUsers = 0
 
+# node id
+nodeID = 0
+
 # setup DHT lockout
 lockout = False
 
@@ -123,6 +126,28 @@ def server_setupDHT():
                     newState = "Leader"
                     userDict[decodeName][2] = newState
 
+                    # list of countries that each node will store
+                    records = [None] * 353
+
+                    # copy data from user dictionary to dht dictionary
+                    for key in userDict:
+                        # copy data
+                        dhtDict[key] = userDict[key]
+                        # add node id
+                        dhtDict[key].append(0)
+                        # add record list
+                        dhtDict[key].append(records)
+                        # check if user is leader. if it is, set his node id to 0
+                        if dhtDict[key][2] is 'Leader':
+                            dhtDict[key][3] = 0
+                        # check if user is leader. it it isn't, set his node id to anything except 0
+                        else:
+                            global nodeID
+                            nodeID += 1
+                            dhtDict[key][3] = nodeID
+
+                    # print(dhtDict)
+
                     # storing csv values into a dictionary of lists (DO NOT DELETE)
                     # open csv file
                     file = open('StatsCountry.csv', 'r', encoding='unicode_escape')
@@ -133,6 +158,17 @@ def server_setupDHT():
                     # store csv values separately as key-value pairs in a dictionary
                     for row in reader:
                         countriesDict[row[0]] = [row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]]
+
+                    # store country records in corresponding node id
+                    for key in countriesDict.items():
+                        # find country's long name and find the sum of the ASCII value of each character
+                        word = countriesDict[key[0]][2]
+                        sumOfCharacters = sum(ord(ch) for ch in word)
+
+                        # calculate the position of the country that will be stored in the node
+                        position = sumOfCharacters % 353
+                        # calculate the node id the country record will be stored in
+                        nodeID = position % decodeN
 
                     # to-do list for this function:
                     # construct a DHT of size n and have only 1 exist at a time (done) (latter not tested)
