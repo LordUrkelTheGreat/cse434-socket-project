@@ -91,6 +91,21 @@ def client_completeDHT():
     print(commandMessage.decode())
 
 
+def client_queryDHT():
+    # command input is stored into username
+    userName = commandInput[1]
+
+    # the 4 lets the server know this is the query command
+    clientSocket.sendto("4".encode(), (serverName, serverPort))
+
+    # sends the username to the server
+    clientSocket.sendto(userName.encode(), (serverName, serverPort))
+
+    # command message returned and printed
+    commandMessage, serverAddress = clientSocket.recvfrom(2048)
+    print(commandMessage.decode())
+
+
 def client_deRegister():
     # command input is stored into username
     userName = commandInput[1]
@@ -121,6 +136,9 @@ while True:
     elif commandInput[0] == "dht-complete" and firstRegister is True:
         commandNum = "3"
         client_completeDHT()
+    elif commandInput[0] == "query-dht" and firstRegister is True:
+        commandNum = "4"
+        client_queryDHT()
     elif commandInput[0] == "deregister" and firstRegister is True:
         commandNum = "7"
         client_deRegister()

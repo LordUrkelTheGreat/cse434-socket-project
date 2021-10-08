@@ -1,6 +1,7 @@
 from socket import *
 import sys
 import csv
+import random
 
 # dictionaries (don't delete)
 userDict = {}
@@ -18,6 +19,7 @@ lockout = False
 
 # setup DHT complete lockout
 lockout1 = False
+lockout2 = False
 
 # do not delete
 serverPort = int(sys.argv[1])
@@ -76,7 +78,11 @@ def server_register():
                 return
 
     # add decoded information to dictionary
-    userDict[decodeName] = [decodeIP, decodePort, state]
+    decodePort = int(decodePort)
+    leftPort = int(decodePort - 1)
+    rightPort = int(decodePort + 1)
+    queryPort = int(decodePort + 100)
+    userDict[decodeName] = [decodeIP, decodePort, state, leftPort, rightPort, queryPort]
 
     # keeps track of how many users are registered by adding 1 to itself
     global numOfUsers
@@ -181,7 +187,7 @@ def server_setupDHT():
                             # add node id
                             dhtDict[key].append(0)
                             nodeID += 1
-                            dhtDict[key][3] = nodeID
+                            dhtDict[key][6] = nodeID
                             # add record list
                             dhtDict[key].append(records)
 
@@ -191,8 +197,9 @@ def server_setupDHT():
                     # store country records in corresponding node id
                     for key in countriesDict.items():
                         # find country's long name and find the sum of the ASCII value of each character
-                        word = countriesDict[key[0]][2]
+                        word = countriesDict[key[0]][3]
                         sumOfCharacters = sum(ord(ch) for ch in word)
+                        # print(word)
 
                         # calculate the position of the country that will be stored in the node
                         position = sumOfCharacters % 353
@@ -204,20 +211,22 @@ def server_setupDHT():
                         # store record in correct position and node
                         for k, v in dhtDict.items():
                             # print(dhtDict[k][3])
-                            ID = dhtDict[k][3]
+                            ID = dhtDict[k][6]
                             if storeInWhichNode is ID:
                                 # print(dhtDict[k][4][0])
-                                dhtDict[k][4][position] = countriesDict[key[0]].copy()
+                                dhtDict[k][7][position] = countriesDict[key[0]].copy()
                                 # print(f'ID: {ID}')
                                 # print(dhtDict[k][4][position])
 
-                    # print(dhtDict)
+                    print(dhtDict)
                     # print(countriesDict)
 
                     # lockout setup-dht and return success code
                     lockout1 = True
                     returnCode = "SUCCESS: setup dht is complete"
                     serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
+                    global lockout2
+                    lockout2 = True
 
                     # send DHT table of users and their ip addresses and port numbers to client
                     return
@@ -266,7 +275,50 @@ def server_completeDHT():
 
 
 def server_queryDHT():
-    print(4)
+    # receive username from client
+    queryUserName, clientAddressQuery = serverSocket.recvfrom(2048)
+
+    # decode username
+    decodeName = queryUserName.decode()
+
+    # random boolean statement set to false by default
+    valid = False
+
+    # if setup-dht wasn't completed
+    global lockout2
+    if lockout2 is False:
+        returnCode = "FAILURE: setup-dht must be completed first"
+        serverSocket.sendto(returnCode.encode(), clientAddressQuery)
+        return
+
+    # if dht-complete wasn't execute after setup-dht
+    global lockout1
+    if lockout1 is True:
+        returnCode = "FAILURE: dht-complete must be executed first right after setup-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressQuery)
+        return
+
+    # check if user exists and state is Free
+    for key, value in userDict.items():
+        if decodeName in key:
+            if 'Free' in value:
+                valid = True
+                break
+
+    # if the user wasn't found or the state isn't Free
+    if valid is False:
+        # update return code statement and send it back to client
+        returnCode = "FAILURE: The user is a node maintaining the DHT or user doesn't exist"
+        serverSocket.sendto(returnCode.encode(), clientAddressQuery)
+        return
+
+    # FAILURE checks are done now to do the function
+
+    # pick random n user
+    randomUser = random.choice(list(dhtDict.keys()))
+    # print(randomUser)
+
+    #
 
 
 def server_leaveDHT():
