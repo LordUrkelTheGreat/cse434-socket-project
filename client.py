@@ -72,6 +72,9 @@ def client_setupDHT():
     commandMessage, serverAddress = clientSocket.recvfrom(2048)
     print(commandMessage.decode())
 
+    # returns a list of n users that will construct the DHT
+    print(f'List of {n} users that will construct the DHT')
+
 
 def client_completeDHT():
     # command input is stored into username

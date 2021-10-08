@@ -16,6 +16,9 @@ nodeID = 0
 # setup DHT lockout
 lockout = False
 
+# setup DHT complete lockout
+lockout1 = False
+
 # do not delete
 serverPort = int(sys.argv[1])
 
@@ -37,6 +40,12 @@ def server_register():
     regName, clientAddressRegister = serverSocket.recvfrom(2048)
     regIP, clientAddressRegister = serverSocket.recvfrom(2048)
     regPort, clientAddressRegister = serverSocket.recvfrom(2048)
+
+    # if dht-complete wasn't execute after setup-dht
+    if lockout1 is True:
+        returnCode = "FAILURE: dht-complete must be executed first right after setup-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressRegister)
+        return
 
     # random boolean statement set to false as default
     valid = False
@@ -90,6 +99,13 @@ def server_setupDHT():
     setupN, clientAddressSetUp = serverSocket.recvfrom(2048)
     setupUserName, clientAddressSetUp = serverSocket.recvfrom(2048)
 
+    # if dht-complete wasn't execute after setup-dht
+    global lockout1
+    if lockout1 is True:
+        returnCode = "FAILURE: dht-complete must be executed first right after setup-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
+        return
+
     # random boolean statements set to true and false by default
     valid = True
     userInDict = False
@@ -122,32 +138,6 @@ def server_setupDHT():
             if decodeN >= 2:
                 # if n is less than or equal to number of registered users
                 if decodeN <= numOfUsers:
-                    # change the user's state from free to leader
-                    newState = "Leader"
-                    userDict[decodeName][2] = newState
-
-                    # list of countries that each node will store
-                    records = [None] * 353
-
-                    # copy data from user dictionary to dht dictionary
-                    for key in userDict:
-                        # copy data
-                        dhtDict[key] = userDict[key]
-                        # add node id
-                        dhtDict[key].append(0)
-                        # add record list
-                        dhtDict[key].append(records)
-                        # check if user is leader. if it is, set his node id to 0
-                        if dhtDict[key][2] is 'Leader':
-                            dhtDict[key][3] = 0
-                        # check if user is leader. it it isn't, set his node id to anything except 0
-                        else:
-                            global nodeID
-                            nodeID += 1
-                            dhtDict[key][3] = nodeID
-
-                    # print(dhtDict)
-
                     # storing csv values into a dictionary of lists (DO NOT DELETE)
                     # open csv file
                     file = open('StatsCountry.csv', 'r', encoding='unicode_escape')
@@ -157,7 +147,46 @@ def server_setupDHT():
                     next(reader, None)
                     # store csv values separately as key-value pairs in a dictionary
                     for row in reader:
-                        countriesDict[row[0]] = [row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]]
+                        countriesDict[row[0]] = [row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]]
+                        # print(countriesDict[row[0]])
+
+                    # list of countries that each node will store
+                    records = [[]] * 353
+
+                    # store leader in the dht dictionary first
+                    dhtDict[decodeName] = userDict[decodeName].copy()
+
+                    # change the user's state from free to leader
+                    newState = "Leader"
+                    userDict[decodeName][2] = newState
+                    dhtDict[decodeName][2] = newState
+                    # add node id
+                    dhtDict[decodeName].append(0)
+                    # add record list
+                    dhtDict[decodeName].append(records)
+
+                    # node id
+                    global nodeID
+                    nodeID = 0
+
+                    # copy data from user dictionary to dht dictionary
+                    for key in userDict:
+                        # makes sure that the Leader's data isn't copied again
+                        if userDict[key][2] is not 'Leader' and nodeID < (decodeN - 1):
+                            # copy data
+                            dhtDict[key] = userDict[key].copy()
+                            # change user state to InDHT
+                            dhtDict[key][2] = "InDHT"
+                            userDict[key][2] = "InDHT"
+                            # add node id
+                            dhtDict[key].append(0)
+                            nodeID += 1
+                            dhtDict[key][3] = nodeID
+                            # add record list
+                            dhtDict[key].append(records)
+
+                    # print(dhtDict)
+                    # print(userDict)
 
                     # store country records in corresponding node id
                     for key in countriesDict.items():
@@ -167,21 +196,31 @@ def server_setupDHT():
 
                         # calculate the position of the country that will be stored in the node
                         position = sumOfCharacters % 353
+                        # print(f'Position: {position}')
                         # calculate the node id the country record will be stored in
-                        nodeID = position % decodeN
+                        storeInWhichNode = position % decodeN
+                        # print(f'Store in which node: {storeInWhichNode}')
 
-                    # to-do list for this function:
-                    # construct a DHT of size n and have only 1 exist at a time (done) (latter not tested)
-                    # set the state of given username to Leader (done)
-                    # return Failure codes from given conditions (done)
-                    # select n-1 users with a Free state and change their states to InDHT
-                    # assign identifiers and neighbors
-                    # construct the local DHTs
-                        # store csv values into a dictionary of lists (done)
-                        # leader reads line L from the dataset into a record
-                        # leader computes the hash function using the Long Name as the key in 2 steps
-                    # return Success code if DHT has been successfully build
-                # if n is greater than the number of registered users it returns a failure
+                        # store record in correct position and node
+                        for k, v in dhtDict.items():
+                            # print(dhtDict[k][3])
+                            ID = dhtDict[k][3]
+                            if storeInWhichNode is ID:
+                                # print(dhtDict[k][4][0])
+                                dhtDict[k][4][position] = countriesDict[key[0]].copy()
+                                # print(f'ID: {ID}')
+                                # print(dhtDict[k][4][position])
+
+                    # print(dhtDict)
+                    # print(countriesDict)
+
+                    # lockout setup-dht and return success code
+                    lockout1 = True
+                    returnCode = "SUCCESS: setup dht is complete"
+                    serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
+
+                    # send DHT table of users and their ip addresses and port numbers to client
+                    return
                 else:
                     returnCode = "FAILURE: n is bigger than the number of registered users"
                     serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
@@ -200,33 +239,28 @@ def server_completeDHT():
     # random boolean statement set to False by default
     valid = False
 
-    # if the function doesn't properly execute for some reason
-    returnCode = "FAILURE: complete DHT failed to function properly"
-
     # decode username
     decodeName = completeUserName.decode()
 
     # search through dictionary
     for key, value in userDict.items():
         # if the user is the key
-        if decodeName in key:
+        if key == decodeName:
             # if the user state is Leader
-            if "Leader" in value:
+            if userDict[key][2] == 'Leader':
                 # if dhtDict exists
-                if dhtDict:
+                if len(dhtDict) != 0:
                     valid = True
-                else:
-                    returnCode = "FAILURE: DHT not setup"
-                    valid = False
-            else:
-                returnCode = "FAILURE: User is not the leader"
-                valid = False
-        else:
-            returnCode = "FAILURE: User isn't registered"
-            valid = False
+                    break
 
     if valid is True:
         returnCode = "SUCCESS: DHT has been established"
+        global lockout
+        lockout = True
+        global lockout1
+        lockout1 = False
+    else:
+        returnCode = "FAILURE: DHT isn't setup, User isn't the leader, or User isn't registered"
 
     serverSocket.sendto(returnCode.encode(), clientAddressComplete)
 
@@ -246,6 +280,13 @@ def server_rebuiltDHT():
 def server_deRegister():
     # receive username from client
     deRegisterUserName, clientAddressDeRegister = serverSocket.recvfrom(2048)
+
+    # if dht-complete wasn't execute after setup-dht
+    global lockout1
+    if lockout1 is True:
+        returnCode = "FAILURE: dht-complete must be executed first right after setup-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressDeRegister)
+        return
 
     # random boolean variable set to false by default
     statement = False
