@@ -212,19 +212,19 @@ def server_setupDHT():
                             # add record list
                             dhtDict[key].append(records)
                         # ip address
-                        print(f'IP Address: {dhtDict[key][0]}')
+                        # print(f'IP Address: {dhtDict[key][0]}')
                         # port number
-                        print(f'Port Number: {dhtDict[key][1]}')
+                        # print(f'Port Number: {dhtDict[key][1]}')
                         # state
-                        print(f'State: {dhtDict[key][2]}')
+                        # print(f'State: {dhtDict[key][2]}')
                         # left port
-                        print(f'Left Port: {dhtDict[key][3]}')
+                        # print(f'Left Port: {dhtDict[key][3]}')
                         # right port
-                        print(f'Right Port: {dhtDict[key][4]}')
+                        # print(f'Right Port: {dhtDict[key][4]}')
                         # query port
-                        print(f'Query Port: {dhtDict[key][5]}')
+                        # print(f'Query Port: {dhtDict[key][5]}')
                         # node id
-                        print(f'Node ID: {dhtDict[key][6]}')
+                        # print(f'Node ID: {dhtDict[key][6]}')
                         # store current key as previous key
                         previousKey = key
 
@@ -362,10 +362,47 @@ def server_queryDHT():
     # returns long name of country from client
     longName, clientAddressQuery = serverSocket.recvfrom(2048)
     decodeLongName = longName.decode()
-    print(decodeLongName)
+    # print(decodeLongName)
 
     # starting at random index, go through dht dictionary finding long name
-    
+    # find the sum of the ASCII value of each character in long name
+    word = decodeLongName
+    sumOfCharacters = sum(ord(ch) for ch in word)
+    # print(word)
+
+    # calculate the position of the country that will be stored in the node
+    position = sumOfCharacters % 353
+    inWhichID = position % len(dhtDict)
+
+    # find node ID
+    returnCode = "FAILURE: Long-name search didn't work"
+    for key, value in dhtDict.items():
+        # store node id
+        ID = dhtDict[key][6]
+        # if node ID is the same as calculated ID and if long name is found in records
+        if inWhichID is ID and word is dhtDict[key][7][position][3]:
+            # return record to client
+            record0 = dhtDict[key][7][position][0]
+            record1 = dhtDict[key][7][position][1]
+            record2 = dhtDict[key][7][position][2]
+            record3 = dhtDict[key][7][position][3]
+            record4 = dhtDict[key][7][position][4]
+            record5 = dhtDict[key][7][position][5]
+            record6 = dhtDict[key][7][position][6]
+            record7 = dhtDict[key][7][position][7]
+            record8 = dhtDict[key][7][position][8]
+            returnRecord = f'Country Code: {record0}, Short Name: {record1}, Table Name: {record2}, Long Name: {record3}, 2-Alpha Code: {record4}, Currency Unit: {record5}, Region: {record6}, WB-2 Code: {record7}, Latest Population Census: {record8}'
+            serverSocket.sendto(returnRecord.encode(), clientAddressQuery)
+
+            # return success
+            returnCode = "SUCCESS: Long-name found in DHT"
+            serverSocket.sendto(returnCode.encode(), clientAddressQuery)
+            return
+        else:
+            returnCode = "FAILURE: Long-name not found in DHT"
+
+    serverSocket.sendto(returnCode.encode(), clientAddressQuery)
+    return
 
 
 def server_leaveDHT():

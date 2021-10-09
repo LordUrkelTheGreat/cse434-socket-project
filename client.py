@@ -109,6 +109,10 @@ def client_queryDHT():
     longNameInput = input("Enter long name of country to query: ")
     clientSocket.sendto(longNameInput.encode(), (serverName, serverPort))
 
+    # server sends back record
+    recordTable, serverAddress = clientSocket.recvfrom(2048)
+    print(recordTable)
+
     # command message returned and printed
     commandMessage, serverAddress = clientSocket.recvfrom(2048)
     print(commandMessage.decode())
