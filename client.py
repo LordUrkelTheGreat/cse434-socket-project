@@ -101,6 +101,14 @@ def client_queryDHT():
     # sends the username to the server
     clientSocket.sendto(userName.encode(), (serverName, serverPort))
 
+    # server sends client random user in DHT
+    randomUser, serverAddress = clientSocket.recvfrom(2048)
+    print(randomUser.decode())
+
+    # send long name of country to server
+    longNameInput = input("Enter long name of country to query: ")
+    clientSocket.sendto(longNameInput.encode(), (serverName, serverPort))
+
     # command message returned and printed
     commandMessage, serverAddress = clientSocket.recvfrom(2048)
     print(commandMessage.decode())

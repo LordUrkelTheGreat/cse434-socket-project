@@ -21,6 +21,9 @@ lockout = False
 lockout1 = False
 lockout2 = False
 
+# previous key
+previousKey = ""
+
 # do not delete
 serverPort = int(sys.argv[1])
 
@@ -177,6 +180,8 @@ def server_setupDHT():
 
                     # copy data from user dictionary to dht dictionary
                     for key in userDict:
+                        global previousKey
+
                         # makes sure that the Leader's data isn't copied again
                         if userDict[key][2] is not 'Leader' and nodeID < (decodeN - 1):
                             # copy data
@@ -184,12 +189,44 @@ def server_setupDHT():
                             # change user state to InDHT
                             dhtDict[key][2] = "InDHT"
                             userDict[key][2] = "InDHT"
-                            # add node id
+                            # add node id and connect ports
                             dhtDict[key].append(0)
                             nodeID += 1
                             dhtDict[key][6] = nodeID
+                            if nodeID is 1 and nodeID is (decodeN - 1):
+                                # node 1 left port is equal to node 0 right port
+                                dhtDict[key][3] = dhtDict[decodeName][4]
+                                # node 1 right port is equal to node 0 left port
+                                dhtDict[key][4] = dhtDict[decodeName][3]
+                            elif nodeID is 1:
+                                # node 1 left port is equal to node 0 right port
+                                dhtDict[key][3] = dhtDict[decodeName][4]
+                            elif nodeID is (decodeN - 1):
+                                # last node left port is equal to previous node right port
+                                dhtDict[key][3] = dhtDict[previousKey][4]
+                                # last node right port is equal to node 0 left port
+                                dhtDict[key][4] = dhtDict[decodeName][3]
+                            else:
+                                # previous node right port is current node left port
+                                dhtDict[key][3] = dhtDict[previousKey][4]
                             # add record list
                             dhtDict[key].append(records)
+                        # ip address
+                        print(f'IP Address: {dhtDict[key][0]}')
+                        # port number
+                        print(f'Port Number: {dhtDict[key][1]}')
+                        # state
+                        print(f'State: {dhtDict[key][2]}')
+                        # left port
+                        print(f'Left Port: {dhtDict[key][3]}')
+                        # right port
+                        print(f'Right Port: {dhtDict[key][4]}')
+                        # query port
+                        print(f'Query Port: {dhtDict[key][5]}')
+                        # node id
+                        print(f'Node ID: {dhtDict[key][6]}')
+                        # store current key as previous key
+                        previousKey = key
 
                     # print(dhtDict)
                     # print(userDict)
@@ -213,12 +250,12 @@ def server_setupDHT():
                             # print(dhtDict[k][3])
                             ID = dhtDict[k][6]
                             if storeInWhichNode is ID:
-                                # print(dhtDict[k][4][0])
+                                # print(dhtDict[k][7][0])
                                 dhtDict[k][7][position] = countriesDict[key[0]].copy()
                                 # print(f'ID: {ID}')
-                                # print(dhtDict[k][4][position])
+                                # print(dhtDict[k][7][position])
 
-                    print(dhtDict)
+                    # print(dhtDict)
                     # print(countriesDict)
 
                     # lockout setup-dht and return success code
@@ -318,7 +355,17 @@ def server_queryDHT():
     randomUser = random.choice(list(dhtDict.keys()))
     # print(randomUser)
 
-    #
+    # send random user to client
+    randomUserString = f'Random user in the DHT that will start the query: {randomUser}'
+    serverSocket.sendto(randomUserString.encode(), clientAddressQuery)
+
+    # returns long name of country from client
+    longName, clientAddressQuery = serverSocket.recvfrom(2048)
+    decodeLongName = longName.decode()
+    print(decodeLongName)
+
+    # starting at random index, go through dht dictionary finding long name
+    
 
 
 def server_leaveDHT():
