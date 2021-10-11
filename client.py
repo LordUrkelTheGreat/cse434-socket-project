@@ -118,6 +118,24 @@ def client_queryDHT():
     print(commandMessage.decode())
 
 
+def client_leaveDHT():
+    # fix client_queryDHT() cause return code statement is buggy
+    # prints the return code correctly but does the user input as if code works fine
+
+    # command input is stored into username
+    userName = commandInput[1]
+
+    # the 5 lets the server know this is the leave dht command
+    clientSocket.sendto("5".encode(), (serverName, serverPort))
+
+    # sends the username to the server
+    clientSocket.sendto(userName.encode(), (serverName, serverPort))
+
+    # command message returned and printed
+    commandMessage, serverAddress = clientSocket.recvfrom(2048)
+    print(commandMessage.decode())
+
+
 def client_deRegister():
     # command input is stored into username
     userName = commandInput[1]
@@ -151,6 +169,9 @@ while True:
     elif commandInput[0] == "query-dht" and firstRegister is True:
         commandNum = "4"
         client_queryDHT()
+    elif commandInput[0] == "leave-dht" and firstRegister is True:
+        commandNum = "5"
+        client_leaveDHT()
     elif commandInput[0] == "deregister" and firstRegister is True:
         commandNum = "7"
         client_deRegister()

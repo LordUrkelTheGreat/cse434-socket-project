@@ -24,6 +24,13 @@ lockout2 = False
 # previous key
 previousKey = ""
 
+# right neighbor
+rightNeighbor = ""
+
+# removed key
+removedDict = {}
+removedKey = ""
+
 # do not delete
 serverPort = int(sys.argv[1])
 
@@ -82,20 +89,20 @@ def server_register():
 
     # add decoded information to dictionary
     decodePort = int(decodePort)
-    leftPort = int(decodePort - 1)
-    rightPort = int(decodePort + 1)
+    leftPort = int(decodePort * 2)
+    rightPort = int(leftPort + 11)
     queryPort = int(decodePort + 100)
-    userDict[decodeName] = [decodeIP, decodePort, state, leftPort, rightPort, queryPort]
+    userDict[decodeName] = [decodeName, decodeIP, decodePort, state, leftPort, rightPort, queryPort]
 
     # keeps track of how many users are registered by adding 1 to itself
     global numOfUsers
     numOfUsers += 1
 
     # print statements
-    print(f'Username: {decodeName}')
-    print(f'IP Address: {userDict[decodeName][0]}')
-    print(f'Port Number: {userDict[decodeName][1]}')
-    print(f'State: {userDict[decodeName][2]}')
+    print(f'Username: {userDict[decodeName][0]}')
+    print(f'IP Address: {userDict[decodeName][1]}')
+    print(f'Port Number: {userDict[decodeName][2]}')
+    print(f'State: {userDict[decodeName][3]}')
     print(f'Values are stored')
 
     # update return code statement and send it back to client
@@ -167,66 +174,59 @@ def server_setupDHT():
 
                     # change the user's state from free to leader
                     newState = "Leader"
-                    userDict[decodeName][2] = newState
-                    dhtDict[decodeName][2] = newState
+                    userDict[decodeName][3] = newState
+                    dhtDict[decodeName][3] = newState
                     # add node id
                     dhtDict[decodeName].append(0)
                     # add record list
                     dhtDict[decodeName].append(records)
 
                     # node id
-                    global nodeID
+                    global nodeID, previousKey
+                    previousKey = decodeName
                     nodeID = 0
+
+                    # print(dhtDict)
 
                     # copy data from user dictionary to dht dictionary
                     for key in userDict:
-                        global previousKey
-
-                        # makes sure that the Leader's data isn't copied again
-                        if userDict[key][2] is not 'Leader' and nodeID < (decodeN - 1):
+                        if userDict[key][3] is not 'Leader':
                             # copy data
                             dhtDict[key] = userDict[key].copy()
-                            # change user state to InDHT
-                            dhtDict[key][2] = "InDHT"
-                            userDict[key][2] = "InDHT"
-                            # add node id and connect ports
+
+                            # change user state from Free to InDHT
+                            dhtDict[key][3] = "InDHT"
+                            userDict[key][3] = "InDHT"
+
+                            # add node id
                             dhtDict[key].append(0)
                             nodeID += 1
-                            dhtDict[key][6] = nodeID
-                            if nodeID is 1 and nodeID is (decodeN - 1):
-                                # node 1 left port is equal to node 0 right port
-                                dhtDict[key][3] = dhtDict[decodeName][4]
-                                # node 1 right port is equal to node 0 left port
-                                dhtDict[key][4] = dhtDict[decodeName][3]
-                            elif nodeID is 1:
-                                # node 1 left port is equal to node 0 right port
-                                dhtDict[key][3] = dhtDict[decodeName][4]
-                            elif nodeID is (decodeN - 1):
-                                # last node left port is equal to previous node right port
-                                dhtDict[key][3] = dhtDict[previousKey][4]
-                                # last node right port is equal to node 0 left port
-                                dhtDict[key][4] = dhtDict[decodeName][3]
-                            else:
-                                # previous node right port is current node left port
-                                dhtDict[key][3] = dhtDict[previousKey][4]
-                            # add record list
+                            dhtDict[key][7] = nodeID
+
+                            # add records
                             dhtDict[key].append(records)
-                        # ip address
-                        # print(f'IP Address: {dhtDict[key][0]}')
-                        # port number
-                        # print(f'Port Number: {dhtDict[key][1]}')
-                        # state
-                        # print(f'State: {dhtDict[key][2]}')
-                        # left port
-                        # print(f'Left Port: {dhtDict[key][3]}')
-                        # right port
-                        # print(f'Right Port: {dhtDict[key][4]}')
-                        # query port
-                        # print(f'Query Port: {dhtDict[key][5]}')
-                        # node id
-                        # print(f'Node ID: {dhtDict[key][6]}')
-                        # store current key as previous key
-                        previousKey = key
+
+                    # connect the ports to form a circle
+                    for key in dhtDict:
+                        # node 1 is the last node in DHT
+                        if dhtDict[key][7] == 1 and dhtDict[key][7] == (decodeN - 1):
+                            # node 1 left port is equal to node 0 right port
+                            dhtDict[key][4] = dhtDict[previousKey][5]
+                            # node 1 right port is equal to node 0 left port
+                            dhtDict[key][5] = dhtDict[previousKey][4]
+                        # last node in the DHT is not node 1
+                        elif dhtDict[key][7] == (decodeN - 1):
+                            # last node left port is equal to left neighbor node right port
+                            dhtDict[key][4] = dhtDict[previousKey][5]
+                            # last node right port is equal to node 0 left port
+                            dhtDict[key][5] = dhtDict[decodeName][4]
+                        # node that is not the last node in DHT
+                        else:
+                            # makes sure node 0 left and right ports are not updated
+                            if dhtDict[key][7] != 0:
+                                # current node left port is equal to left neighbor node right port
+                                dhtDict[key][4] = dhtDict[previousKey][5]
+                            previousKey = key
 
                     # print(dhtDict)
                     # print(userDict)
@@ -248,10 +248,10 @@ def server_setupDHT():
                         # store record in correct position and node
                         for k, v in dhtDict.items():
                             # print(dhtDict[k][3])
-                            ID = dhtDict[k][6]
+                            ID = dhtDict[k][7]
                             if storeInWhichNode is ID:
                                 # print(dhtDict[k][7][0])
-                                dhtDict[k][7][position] = countriesDict[key[0]].copy()
+                                dhtDict[k][8][position] = countriesDict[key[0]].copy()
                                 # print(f'ID: {ID}')
                                 # print(dhtDict[k][7][position])
 
@@ -293,7 +293,7 @@ def server_completeDHT():
         # if the user is the key
         if key == decodeName:
             # if the user state is Leader
-            if userDict[key][2] == 'Leader':
+            if userDict[key][3] == 'Leader':
                 # if dhtDict exists
                 if len(dhtDict) != 0:
                     valid = True
@@ -378,19 +378,19 @@ def server_queryDHT():
     returnCode = "FAILURE: Long-name search didn't work"
     for key, value in dhtDict.items():
         # store node id
-        ID = dhtDict[key][6]
+        ID = dhtDict[key][7]
         # if node ID is the same as calculated ID and if long name is found in records
         if inWhichID is ID and word is dhtDict[key][7][position][3]:
             # return record to client
-            record0 = dhtDict[key][7][position][0]
-            record1 = dhtDict[key][7][position][1]
-            record2 = dhtDict[key][7][position][2]
-            record3 = dhtDict[key][7][position][3]
-            record4 = dhtDict[key][7][position][4]
-            record5 = dhtDict[key][7][position][5]
-            record6 = dhtDict[key][7][position][6]
-            record7 = dhtDict[key][7][position][7]
-            record8 = dhtDict[key][7][position][8]
+            record0 = dhtDict[key][8][position][0]
+            record1 = dhtDict[key][8][position][1]
+            record2 = dhtDict[key][8][position][2]
+            record3 = dhtDict[key][8][position][3]
+            record4 = dhtDict[key][8][position][4]
+            record5 = dhtDict[key][8][position][5]
+            record6 = dhtDict[key][8][position][6]
+            record7 = dhtDict[key][8][position][7]
+            record8 = dhtDict[key][8][position][8]
             returnRecord = f'Country Code: {record0}, Short Name: {record1}, Table Name: {record2}, Long Name: {record3}, 2-Alpha Code: {record4}, Currency Unit: {record5}, Region: {record6}, WB-2 Code: {record7}, Latest Population Census: {record8}'
             serverSocket.sendto(returnRecord.encode(), clientAddressQuery)
 
@@ -406,7 +406,200 @@ def server_queryDHT():
 
 
 def server_leaveDHT():
-    print(5)
+    # receive username from client
+    leaveUserName, clientAddressLeave = serverSocket.recvfrom(2048)
+
+    # decode username
+    decodeName = leaveUserName.decode()
+
+    # checks if dht is empty
+    if len(dhtDict) is 0:
+        returnCode = "FAILURE: DHT doesn't exist"
+        serverSocket.sendto(returnCode.encode(), clientAddressLeave)
+        return
+
+    # checks if user is maintaining the dht
+    if userDict[decodeName][3] != 'Leader' and userDict[decodeName][3] != 'InDHT':
+        returnCode = "FAILURE: user is not maintaining the DHT"
+        serverSocket.sendto(returnCode.encode(), clientAddressLeave)
+        return
+
+    # FAILURE conditions are done. now to work on the success part.
+    # user store the 3-tuple (username, ip address, and port number) of its right neighbor
+
+    # find node id of right neighbor if leader is not the right neighbor
+    # store leader key just in case if leader is the right neighbor
+    currentNodeID = dhtDict[decodeName][7]
+    leader = decodeName
+    global rightNeighbor
+    rightNeighbor = ""
+    for key in dhtDict.keys():
+        temp = dhtDict[key][7]
+        # if key is leader
+        if dhtDict[key][3] == 'Leader':
+            leader = key
+        # if key is the right neighbor
+        if temp == currentNodeID + 1:
+            rightNeighbor = key
+
+    # checks if right neighbor is the leader and stores it
+    if currentNodeID == len(dhtDict) - 1:
+        # store the right neighbor's 3-tuple
+        rightNeighborUserName = dhtDict[leader][0]
+        rightNeighborIpAddress = dhtDict[leader][1]
+        rightNeighborPortNumber = dhtDict[leader][2]
+        rightNeighborState = dhtDict[leader][3]
+        rightNeighborLeftPort = dhtDict[leader][4]
+        rightNeighborRightPort = dhtDict[leader][5]
+        rightNeighborQueryPort = dhtDict[leader][6]
+        rightNeighborNodeID = dhtDict[leader][7]
+        rightNeighborRecords = dhtDict[leader][8]
+        # print(f'Right Neighbor Username: {rightNeighborUserName}')
+        # print(f'Right Neighbor IP Address: {rightNeighborIpAddress}')
+        # print(f'Right Neighbor Port Number: {rightNeighborPortNumber}')
+        # print(f'Right Neighbor State: {rightNeighborState}')
+        # print(f'Right Neighbor Left Port: {rightNeighborLeftPort}')
+        # print(f'Right Neighbor Right Port: {rightNeighborRightPort}')
+        # print(f'Right Neighbor Query Port: {rightNeighborQueryPort}')
+        # print(f'Right Neighbor Node ID: {rightNeighborNodeID}')
+        # print(f'Right Neighbor Records: {rightNeighborRecords}')
+    # if right neighbor is not the leader and stores it
+    else:
+        # store the right neighbor's 3-tuple
+        rightNeighborUserName = dhtDict[rightNeighbor][0]
+        rightNeighborIpAddress = dhtDict[rightNeighbor][1]
+        rightNeighborPortNumber = dhtDict[rightNeighbor][2]
+        rightNeighborState = dhtDict[rightNeighbor][3]
+        rightNeighborLeftPort = dhtDict[rightNeighbor][4]
+        rightNeighborRightPort = dhtDict[rightNeighbor][5]
+        rightNeighborQueryPort = dhtDict[rightNeighbor][6]
+        rightNeighborNodeID = dhtDict[rightNeighbor][7]
+        rightNeighborRecords = dhtDict[rightNeighbor][8]
+        # print(f'Right Neighbor Username: {rightNeighborUserName}')
+        # print(f'Right Neighbor IP Address: {rightNeighborIpAddress}')
+        # print(f'Right Neighbor Port Number: {rightNeighborPortNumber}')
+        # print(f'Right Neighbor State: {rightNeighborState}')
+        # print(f'Right Neighbor Left Port: {rightNeighborLeftPort}')
+        # print(f'Right Neighbor Right Port: {rightNeighborRightPort}')
+        # print(f'Right Neighbor Query Port: {rightNeighborQueryPort}')
+        # print(f'Right Neighbor Node ID: {rightNeighborNodeID}')
+        # print(f'Right Neighbor Records: {rightNeighborRecords}')
+
+    # remove node and set right neighbor as leader if leader node was removed
+    global removedKey, removedDict
+    for key in dhtDict.keys():
+        if key == decodeName:
+            if key == leader:
+                dhtDict[rightNeighbor][3] = 'Leader'
+
+            # store removed values
+            user = dhtDict[key][0]
+            ipAddress = dhtDict[key][1]
+            portNumber = dhtDict[key][2]
+            state = dhtDict[key][3]
+            leftPort = dhtDict[key][4]
+            rightPort = dhtDict[key][5]
+            queryPort = dhtDict[key][6]
+            ID = dhtDict[key][7]
+            records = dhtDict[key][8]
+
+            # create removed key dictionary
+            removedDict = {}
+            removedKey = key
+            removedDict[key] = [user, ipAddress, portNumber, state, leftPort, rightPort, queryPort, ID, records]
+
+            # remove key
+            dhtDict.pop(key)
+            break
+
+    # renumber node IDs
+    renumberNodeID = 0
+    for key in dhtDict.keys():
+        dhtDict[key][7] = renumberNodeID
+        renumberNodeID += 1
+
+    # reset left and right neighbors through left and right ports
+    global nodeID, previousKey
+    node0 = ""
+
+    # re-connects the ports to form a circle after node was removed
+    for key in dhtDict:
+        # list of countries that each node will store
+        records = [[]] * 353
+
+        # remove records in order to update DHT an re-sort records again
+        dhtDict[key].remove(dhtDict[key][8])
+        dhtDict[key].append(records)
+
+        # store country records in corresponding node id
+        for key1 in countriesDict.items():
+            # find country's long name and find the sum of the ASCII value of each character
+            word = countriesDict[key1[0]][3]
+            sumOfCharacters = sum(ord(ch) for ch in word)
+
+            # calculate the position of the country that will be stored in the node
+            position = sumOfCharacters % 353
+            # calculate the node id the country record will be stored in
+            storeInWhichNode = position % len(dhtDict)
+
+            # store record in correct position and node
+            for k, v in dhtDict.items():
+                ID = dhtDict[k][7]
+                if storeInWhichNode is ID:
+                    dhtDict[k][8][position] = countriesDict[key1[0]].copy()
+
+        # if there is only 1 node in the DHT
+        if len(dhtDict) == 1:
+            break
+        # if there is more than 1 node in the DHT
+        else:
+            # node 1 is the last node in DHT
+            if dhtDict[key][7] == 1 and dhtDict[key][7] == (len(dhtDict) - 1):
+                # node 1 left port is equal to node 0 right port
+                dhtDict[key][4] = dhtDict[previousKey][5]
+                # node 1 right port is equal to node 0 left port
+                dhtDict[key][5] = dhtDict[previousKey][4]
+            # last node in the DHT is not node 1
+            elif dhtDict[key][7] == (len(dhtDict) - 1):
+                # last node left port is equal to left neighbor node right port
+                dhtDict[key][4] = dhtDict[previousKey][5]
+                # last node right port is equal to node 0 left port
+                dhtDict[key][5] = dhtDict[node0][4]
+            else:
+                # if current node is node 0 store key in random variable
+                if dhtDict[key][3] is 'Leader':
+                    node0 = key
+                # makes sure node 0 left and right ports are not updated
+                if dhtDict[key][7] != 0:
+                    # current node left port is equal to left neighbor node right port
+                    dhtDict[key][4] = dhtDict[previousKey][5]
+                previousKey = key
+
+    # print stuff from dht dict (comment if not testing)
+    # for key in dhtDict.keys():
+        # user
+        # print(f'User: {dhtDict[key][0]}')
+        # ip address
+        # print(f'IP Address: {dhtDict[key][1]}')
+        # port number
+        # print(f'Port Number: {dhtDict[key][2]}')
+        # state
+        # print(f'State: {dhtDict[key][3]}')
+        # left port
+        # print(f'Left Port: {dhtDict[key][4]}')
+        # right port
+        # print(f'Right Port: {dhtDict[key][5]}')
+        # query port
+        # print(f'Query Port: {dhtDict[key][6]}')
+        # node id
+        # print(f'Node ID: {dhtDict[key][7]}')
+        # records
+        # print(f'Records: {dhtDict[key][8]}')
+
+    # send return code statement to client
+    returnCode = "SUCCESS: user left the DHT"
+    serverSocket.sendto(returnCode.encode(), clientAddressLeave)
+    return
 
 
 def server_rebuiltDHT():
