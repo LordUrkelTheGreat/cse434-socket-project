@@ -136,12 +136,46 @@ def client_leaveDHT():
     print(commandMessage.decode())
 
 
+def client_rebuiltDHT():
+    # command input 1 is stored intousername
+    userName = commandInput[1]
+
+    # command input 2 is stored into new Leader
+    newLeader = commandInput[2]
+
+    # the 6 lets the server know this is the rebuilt command
+    clientSocket.sendto("6".encode(), (serverName, serverPort))
+
+    # sends the old username and new username to server
+    clientSocket.sendto(userName.encode(), (serverName, serverPort))
+    clientSocket.sendto(newLeader.encode(), (serverName, serverPort))
+
+    # command message returned and printed
+    commandMessage, serverAddress = clientSocket.recvfrom(2048)
+    print(commandMessage.decode())
+
+
 def client_deRegister():
     # command input is stored into username
     userName = commandInput[1]
 
     # the 7 lets the server know this is the de-register command
     clientSocket.sendto("7".encode(), (serverName, serverPort))
+
+    # sends the username to the server
+    clientSocket.sendto(userName.encode(), (serverName, serverPort))
+
+    # command message returned and printed
+    commandMessage, serverAddress = clientSocket.recvfrom(2048)
+    print(commandMessage.decode())
+
+
+def client_joinDHT():
+    # command input is stored into username
+    userName = commandInput[1]
+
+    # the 8 lets the server know this is the join command
+    clientSocket.sendto("8".encode(), (serverName, serverPort))
 
     # sends the username to the server
     clientSocket.sendto(userName.encode(), (serverName, serverPort))
@@ -172,8 +206,14 @@ while True:
     elif commandInput[0] == "leave-dht" and firstRegister is True:
         commandNum = "5"
         client_leaveDHT()
+    elif commandInput[0] == "dht-rebuilt" and firstRegister is True:
+        commandNum = "6"
+        client_rebuiltDHT()
     elif commandInput[0] == "deregister" and firstRegister is True:
         commandNum = "7"
         client_deRegister()
+    elif commandInput[0] == "join-dht" and firstRegister is True:
+        commandNum = "8"
+        client_joinDHT()
     else:
         print("Please enter command correctly or use the register command first.")
