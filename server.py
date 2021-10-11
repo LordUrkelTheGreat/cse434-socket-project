@@ -34,6 +34,9 @@ rightNeighbor = ""
 # removed username
 removedUserName = ""
 
+# add username
+addUserName = ""
+
 # do not delete
 serverPort = int(sys.argv[1])
 
@@ -59,7 +62,7 @@ def server_register():
     # if rebuilt-dht wasn't executed after leave-dht
     global lockout3
     if lockout3 is True:
-        returnCode = "FAILURE: dht-rebuilt must be completed after leave-dht"
+        returnCode = "FAILURE: dht-rebuilt must be completed after leave-dht or join-dht"
         serverSocket.sendto(returnCode.encode(), clientAddressRegister)
         return
 
@@ -318,7 +321,7 @@ def server_queryDHT():
     # if rebuilt-dht wasn't executed after leave-dht
     global lockout3
     if lockout3 is True:
-        returnCode = "FAILURE: dht-rebuilt must be completed after leave-dht"
+        returnCode = "FAILURE: dht-rebuilt must be completed after leave-dht or join-dht"
         serverSocket.sendto(returnCode.encode(), clientAddressQuery)
         return
 
@@ -413,7 +416,7 @@ def server_leaveDHT():
     # if rebuilt-dht wasn't executed after leave-dht
     global lockout3
     if lockout3 is True:
-        returnCode = "FAILURE: dht-rebuilt must be completed after leave-dht"
+        returnCode = "FAILURE: dht-rebuilt must be completed after leave-dht or join-dht"
         serverSocket.sendto(returnCode.encode(), clientAddressLeave)
         return
 
@@ -545,27 +548,6 @@ def server_leaveDHT():
             if storeInWhichNode is ID:
                 dhtDict[k][8][position] = countriesDict[key[0]].copy()
 
-    # print stuff from dht dict (comment if not testing)
-    for key in dhtDict.keys():
-        # user
-        print(f'User: {dhtDict[key][0]}')
-        # ip address
-        print(f'IP Address: {dhtDict[key][1]}')
-        # port number
-        print(f'Port Number: {dhtDict[key][2]}')
-        # state
-        print(f'State: {dhtDict[key][3]}')
-        # left port
-        print(f'Left Port: {dhtDict[key][4]}')
-        # right port
-        print(f'Right Port: {dhtDict[key][5]}')
-        # query port
-        print(f'Query Port: {dhtDict[key][6]}')
-        # node id
-        print(f'Node ID: {dhtDict[key][7]}')
-        # records
-        # print(f'Records: {dhtDict[key][8]}')
-
     # this makes sure that user has to rebuild dht first before removing another user from dht
     lockout3 = True
 
@@ -606,14 +588,14 @@ def server_rebuiltDHT():
 
     # if old username is not the same as removed username
     global removedUserName
-    if decodeUserName != removedUserName:
-        returnCode = "FAILURE: old username does not match leave-dht username"
+    if decodeUserName != removedUserName and decodeUserName != addUserName:
+        returnCode = "FAILURE: old username does not match leave-dht or join-dht username"
         serverSocket.sendto(returnCode.encode(), clientAddressRebuilt)
         return
 
     # if new leader matches username. should not happen since username was removed from DHT
-    if decodeNewLeader == decodeUserName:
-        returnCode = "FAILURE: new leader cannot be username"
+    if decodeNewLeader == removedUserName and decodeNewLeader != addUserName:
+        returnCode = "FAILURE: new leader cannot be deleted username"
         serverSocket.sendto(returnCode.encode(), clientAddressRebuilt)
         return
 
@@ -728,6 +710,29 @@ def server_rebuiltDHT():
     for key in tempDHTDict.keys():
         dhtDict[key] = tempDHTDict[key].copy()
 
+    # print stuff from dht dict (comment if not testing)
+    for key in dhtDict.keys():
+        # user
+        print(f'User: {dhtDict[key][0]}')
+        # ip address
+        print(f'IP Address: {dhtDict[key][1]}')
+        # port number
+        print(f'Port Number: {dhtDict[key][2]}')
+        # state
+        print(f'State: {dhtDict[key][3]}')
+        # left port
+        print(f'Left Port: {dhtDict[key][4]}')
+        # right port
+        print(f'Right Port: {dhtDict[key][5]}')
+        # query port
+        print(f'Query Port: {dhtDict[key][6]}')
+        # node id
+        print(f'Node ID: {dhtDict[key][7]}')
+        # records
+        # print(f'Records: {dhtDict[key][8]}')
+
+    print(userDict)
+
     # empty temporary dht dictionary
     tempDHTDict = {}
 
@@ -747,7 +752,7 @@ def server_deRegister():
     # if rebuilt-dht wasn't executed after leave-dht
     global lockout3
     if lockout3 is True:
-        returnCode = "FAILURE: dht-rebuilt must be completed after leave-dht"
+        returnCode = "FAILURE: dht-rebuilt must be completed after leave-dht or join-dht"
         serverSocket.sendto(returnCode.encode(), clientAddressDeRegister)
         return
 
@@ -788,7 +793,142 @@ def server_deRegister():
 
 
 def server_joinDHT():
-    print(8)
+    # receive username from client
+    joinUserName, clientAddressJoin = serverSocket.recvfrom(2048)
+
+    # decode username
+    decodeUserName = joinUserName.decode()
+
+    # if rebuilt-dht wasn't executed after leave-dht
+    global lockout3
+    if lockout3 is True:
+        returnCode = "FAILURE: dht-rebuilt must be completed after leave-dht or join-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressJoin)
+        return
+
+    # if setup-dht wasn't completed
+    global lockout2
+    if lockout2 is False:
+        returnCode = "FAILURE: setup-dht must be completed first"
+        serverSocket.sendto(returnCode.encode(), clientAddressJoin)
+        return
+
+    # if dht-complete wasn't execute after setup-dht
+    global lockout1
+    if lockout1 is True:
+        returnCode = "FAILURE: dht-complete must be executed first right after setup-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressJoin)
+        return
+
+    # check if username is already in dht
+    for key in dhtDict.keys():
+        if decodeUserName == key:
+            returnCode = "FAILURE: user is already in dht"
+            serverSocket.sendto(returnCode.encode(), clientAddressJoin)
+            return
+
+    # check if username is in user dictionary
+    valid = False
+    for key in userDict.keys():
+        if decodeUserName == key:
+            valid = True
+            break
+    if valid is False:
+        returnCode = "FAILURE: user does not exist"
+        serverSocket.sendto(returnCode.encode(), clientAddressJoin)
+        return
+
+    # check if username is in dht dictionary
+    for key in dhtDict.keys():
+        if decodeUserName == key:
+            returnCode = "FAILURE: user is maintaining the DHT"
+            serverSocket.sendto(returnCode.encode(), clientAddressJoin)
+            return
+
+    # FAILURE checks done
+
+    # add username
+    global addUserName
+    addUserName = decodeUserName
+
+    # Add user to the end of DHT
+    userName = userDict[decodeUserName][0]
+    ipAddress = userDict[decodeUserName][1]
+    portNumber = userDict[decodeUserName][2]
+    userDict[decodeUserName][3] = "InDHT"
+    state = userDict[decodeUserName][3]
+    leftPort = userDict[decodeUserName][4]
+    rightPort = userDict[decodeUserName][5]
+    queryPort = userDict[decodeUserName][6]
+    dhtDict[decodeUserName] = [userName, ipAddress, portNumber, state, leftPort, rightPort, queryPort]
+
+    # add node id (random number)
+    dhtDict[decodeUserName].append(0)
+    dhtDict[decodeUserName][7] = portNumber * 100
+
+    # add records
+    records = [[]] * 353
+    dhtDict[decodeUserName].append(records)
+
+    # renumber node IDs
+    renumberNodeID = 0
+    for key in dhtDict.keys():
+        dhtDict[key][7] = renumberNodeID
+        renumberNodeID += 1
+
+    # re-connect left and right ports
+    # reset left and right neighbors through left and right ports
+    global nodeID, previousKey
+    node0 = decodeUserName
+    previousKey = decodeUserName
+
+    # re-connects the ports to form a circle after node was removed
+    for key in dhtDict:
+        # remove records in order to update DHT an re-sort records again
+        dhtDict[key].remove(dhtDict[key][8])
+        dhtDict[key].append(records)
+
+        # reset left and right ports
+        dhtDict[key][4] = userDict[key][4]
+        dhtDict[key][5] = userDict[key][5]
+
+        # if there is only 1 node in the DHT
+        if len(dhtDict) == 1:
+            break
+        # if there is more than 1 node in the DHT
+        else:
+            # node 1 is the last node in DHT
+            if dhtDict[key][7] == 1 and dhtDict[key][7] == (len(dhtDict) - 1):
+                # node 1 left port is equal to node 0 right port
+                dhtDict[key][4] = dhtDict[previousKey][5]
+                # node 1 right port is equal to node 0 left port
+                dhtDict[key][5] = dhtDict[previousKey][4]
+            # last node in the DHT is not node 1
+            elif dhtDict[key][7] == (len(dhtDict) - 1):
+                # last node left port is equal to left neighbor node right port
+                dhtDict[key][4] = dhtDict[previousKey][5]
+                # last node right port is equal to node 0 left port
+                dhtDict[key][5] = dhtDict[node0][4]
+            else:
+                # if current node is node 0 store key in random variable
+                if dhtDict[key][3] is 'Leader':
+                    node0 = key
+                # makes sure node 0 left and right ports are not updated
+                if dhtDict[key][7] != 0:
+                    # current node left port is equal to left neighbor node right port
+                    dhtDict[key][4] = dhtDict[previousKey][5]
+                previousKey = key
+
+    # this makes sure that user has to rebuild dht first before removing another user from dht
+    lockout3 = True
+
+    # reset temporary dht dictionary
+    global tempDHTDict
+    tempDHTDict = {}
+
+    returnCode = "SUCCESS: User joined the DHT"
+    serverSocket.sendto(returnCode.encode(), clientAddressJoin)
+    return
 
 
 def server_teardownDHT():
