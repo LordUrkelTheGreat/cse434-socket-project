@@ -169,6 +169,10 @@ def client_deRegister():
     commandMessage, serverAddress = clientSocket.recvfrom(2048)
     print(commandMessage.decode())
 
+    # exit application after user is de-registered
+    print("User is now de-registered. Exiting...")
+    exit()
+
 
 def client_joinDHT():
     # command input is stored into username
