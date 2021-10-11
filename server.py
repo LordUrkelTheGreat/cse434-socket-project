@@ -25,6 +25,9 @@ lockout2 = False
 # leave-dht lockout
 lockout3 = False
 
+# teardown-dht lockout
+lockout4 = False
+
 # previous key
 previousKey = ""
 
@@ -36,6 +39,9 @@ removedUserName = ""
 
 # add username
 addUserName = ""
+
+# leader username
+leaderUserName = ""
 
 # do not delete
 serverPort = int(sys.argv[1])
@@ -58,6 +64,13 @@ def server_register():
     regName, clientAddressRegister = serverSocket.recvfrom(2048)
     regIP, clientAddressRegister = serverSocket.recvfrom(2048)
     regPort, clientAddressRegister = serverSocket.recvfrom(2048)
+
+    # if teardown-complete wasn't executed after teardown-dht
+    global lockout4
+    if lockout4 is True:
+        returnCode = "FAILURE: teardown-complete must be completed after teardown-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressRegister)
+        return
 
     # if rebuilt-dht wasn't executed after leave-dht
     global lockout3
@@ -127,6 +140,13 @@ def server_setupDHT():
     # receive n and username from client
     setupN, clientAddressSetUp = serverSocket.recvfrom(2048)
     setupUserName, clientAddressSetUp = serverSocket.recvfrom(2048)
+
+    # if teardown-complete wasn't executed after teardown-dht
+    global lockout4
+    if lockout4 is True:
+        returnCode = "FAILURE: teardown-complete must be completed after teardown-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressSetUp)
+        return
 
     # if dht-complete wasn't execute after setup-dht
     global lockout1
@@ -318,6 +338,13 @@ def server_queryDHT():
     # random boolean statement set to false by default
     valid = False
 
+    # if teardown-complete wasn't executed after teardown-dht
+    global lockout4
+    if lockout4 is True:
+        returnCode = "FAILURE: teardown-complete must be completed after teardown-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressQuery)
+        return
+
     # if rebuilt-dht wasn't executed after leave-dht
     global lockout3
     if lockout3 is True:
@@ -412,6 +439,13 @@ def server_leaveDHT():
 
     # decode username
     decodeName = leaveUserName.decode()
+
+    # if teardown-complete wasn't executed after teardown-dht
+    global lockout4
+    if lockout4 is True:
+        returnCode = "FAILURE: teardown-complete must be completed after teardown-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressLeave)
+        return
 
     # if rebuilt-dht wasn't executed after leave-dht
     global lockout3
@@ -571,6 +605,13 @@ def server_rebuiltDHT():
     # decode username and new leader
     decodeUserName = rebuiltUserName.decode()
     decodeNewLeader = rebuiltNewLeader.decode()
+
+    # if teardown-complete wasn't executed after teardown-dht
+    global lockout4
+    if lockout4 is True:
+        returnCode = "FAILURE: teardown-complete must be completed after teardown-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressRebuilt)
+        return
 
     # if setup-dht wasn't completed
     global lockout2
@@ -749,6 +790,13 @@ def server_deRegister():
     # receive username from client
     deRegisterUserName, clientAddressDeRegister = serverSocket.recvfrom(2048)
 
+    # if teardown-complete wasn't executed after teardown-dht
+    global lockout4
+    if lockout4 is True:
+        returnCode = "FAILURE: teardown-complete must be completed after teardown-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressDeRegister)
+        return
+
     # if rebuilt-dht wasn't executed after leave-dht
     global lockout3
     if lockout3 is True:
@@ -798,6 +846,13 @@ def server_joinDHT():
 
     # decode username
     decodeUserName = joinUserName.decode()
+
+    # if teardown-complete wasn't executed after teardown-dht
+    global lockout4
+    if lockout4 is True:
+        returnCode = "FAILURE: teardown-complete must be completed after teardown-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressJoin)
+        return
 
     # if rebuilt-dht wasn't executed after leave-dht
     global lockout3
@@ -932,11 +987,117 @@ def server_joinDHT():
 
 
 def server_teardownDHT():
-    print(9)
+    # receive username from client
+    teardownUserName, clientAddressTeardown = serverSocket.recvfrom(2048)
+
+    # decode username
+    decodeUserName = teardownUserName.decode()
+
+    # if rebuilt-dht wasn't executed after leave-dht
+    global lockout3
+    if lockout3 is True:
+        returnCode = "FAILURE: dht-rebuilt must be completed after leave-dht or join-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressTeardown)
+        return
+
+    # if setup-dht wasn't completed
+    global lockout2
+    if lockout2 is False:
+        returnCode = "FAILURE: setup-dht must be completed first"
+        serverSocket.sendto(returnCode.encode(), clientAddressTeardown)
+        return
+
+    # if dht-complete wasn't execute after setup-dht
+    global lockout1
+    if lockout1 is True:
+        returnCode = "FAILURE: dht-complete must be executed first right after setup-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressTeardown)
+        return
+
+    # list of keys
+    dhtList = list(dhtDict.keys())
+
+    # check if user is leader
+    valid = True
+    for key in dhtList:
+        if key == decodeUserName:
+            if dhtDict[key][3] == 'Leader':
+                valid = True
+                break
+    if valid is False:
+        returnCode = "FAILURE: user is not leader or user is not in dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressTeardown)
+        return
+
+    # delete dht starting with node 1
+    for key in list(dhtDict.keys()):
+        if dhtDict[key][3] != 'Leader':
+            dhtDict.pop(key)
+
+    # delete leader
+    dhtDict.pop(decodeUserName)
+
+    # store leader
+    global leaderUserName
+    leaderUserName = decodeUserName
+
+    # lockout
+    global lockout4
+    lockout4 = True
+
+    # return code to client
+    returnCode = "SUCCESS: DHT is deleted"
+    serverSocket.sendto(returnCode.encode(), clientAddressTeardown)
 
 
 def server_teardownComplete():
-    print(10)
+    # receive username from client
+    teardownUserName, clientAddressTeardown = serverSocket.recvfrom(2048)
+
+    # decode username
+    decodeUserName = teardownUserName.decode()
+
+    # if rebuilt-dht wasn't executed after leave-dht
+    global lockout3
+    if lockout3 is True:
+        returnCode = "FAILURE: dht-rebuilt must be completed after leave-dht or join-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressTeardown)
+        return
+
+    # if setup-dht wasn't completed
+    global lockout2
+    if lockout2 is False:
+        returnCode = "FAILURE: setup-dht must be completed first"
+        serverSocket.sendto(returnCode.encode(), clientAddressTeardown)
+        return
+
+    # if dht-complete wasn't execute after setup-dht
+    global lockout1
+    if lockout1 is True:
+        returnCode = "FAILURE: dht-complete must be executed first right after setup-dht"
+        serverSocket.sendto(returnCode.encode(), clientAddressTeardown)
+        return
+
+    # if user is not leader
+    if decodeUserName != leaderUserName:
+        returnCode = "FAILURE: user is not leader"
+        serverSocket.sendto(returnCode.encode(), clientAddressTeardown)
+        return
+
+    # change all user states to free
+    for key in userDict.keys():
+        userDict[key][3] = "Free"
+
+    # lockout is disabled
+    global lockout4
+    lockout4 = False
+    global lockout
+    lockout = False
+
+    # send return code to client
+    returnCode = "SUCCESS: dht is completely deleted"
+    serverSocket.sendto(returnCode.encode(), clientAddressTeardown)
+    return
 
 
 while True:

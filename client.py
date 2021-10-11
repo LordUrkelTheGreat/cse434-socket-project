@@ -189,6 +189,36 @@ def client_joinDHT():
     print(commandMessage.decode())
 
 
+def client_teardownDHT():
+    # command input is stored into username
+    userName = commandInput[1]
+
+    # the 9 lets the server know this is the teardown-dht command
+    clientSocket.sendto("9".encode(), (serverName, serverPort))
+
+    # sends the username to the server
+    clientSocket.sendto(userName.encode(), (serverName, serverPort))
+
+    # command message returned and printed
+    commandMessage, serverAddress = clientSocket.recvfrom(2048)
+    print(commandMessage.decode())
+
+
+def client_teardownComplete():
+    # command input is stored into username
+    userName = commandInput[1]
+
+    # the 10 lets the server know this is the teardown-complete command
+    clientSocket.sendto("10".encode(), (serverName, serverPort))
+
+    # sends the username to the server
+    clientSocket.sendto(userName.encode(), (serverName, serverPort))
+
+    # command message returned and printed
+    commandMessage, serverAddress = clientSocket.recvfrom(2048)
+    print(commandMessage.decode())
+
+
 while True:
     print()
     print("Please enter command")
@@ -219,5 +249,11 @@ while True:
     elif commandInput[0] == "join-dht" and firstRegister is True:
         commandNum = "8"
         client_joinDHT()
+    elif commandInput[0] == "teardown-dht" and firstRegister is True:
+        commandNum = "9"
+        client_teardownDHT()
+    elif commandInput[0] == "teardown-complete" and firstRegister is True:
+        commandNum = "10"
+        client_teardownComplete()
     else:
         print("Please enter command correctly or use the register command first.")
