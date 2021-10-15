@@ -9,6 +9,9 @@ regexCompile = re.compile(regex)
 clientSocket = socket(AF_INET, SOCK_DGRAM)
 commandInput = ""
 firstRegister = False
+userRegistered = False
+storeUser = ""
+userState = ""
 commandNum = ""
 
 # do not delete
@@ -35,6 +38,16 @@ def client_register():
     ipAddr = commandInput[2]
     portNum = commandInput[3]
 
+    # check if client has already registered a user
+    global userRegistered
+    if userRegistered is True:
+        print("FAILURE: Client already registered a user")
+        return
+
+    # store username
+    global storeUser
+    storeUser = userName
+
     # checks if username is an alphabetic string and less than or equal to a length of 15
     # checks if IPv4 address is valid using regex
     # checks if port number is an integer
@@ -49,10 +62,18 @@ def client_register():
 
         # command message returned and printed
         commandMessage, serverAddress = clientSocket.recvfrom(2048)
-        print(commandMessage.decode())
+        commandMessage = commandMessage.decode()
+        firstWord = commandMessage.split()[0]
+
+        if firstWord == "FAILURE:":
+            print(commandMessage)
+            return
+        print(commandMessage)
+
+        userRegistered = True
     else:
         # when the conditions of the above if statement isn't met
-        print("Error: Username must only contain alphabets, username length must be less than or equal to 15 "
+        print("FAILURE: Username must only contain alphabets, username length must be less than or equal to 15 "
               "characters, IPv4 address is incorrect, or the port number is not a digit")
 
 
@@ -60,6 +81,12 @@ def client_setupDHT():
     # stores indices from command input to n and username
     n = commandInput[1]
     userName = commandInput[2]
+
+    # if client is not username
+    global storeUser
+    if storeUser != userName:
+        print("FAILURE: Client is not the user")
+        return
 
     # the 2 lets the server know this is the setup-dht command
     clientSocket.sendto("2".encode(), (serverName, serverPort))
@@ -72,13 +99,20 @@ def client_setupDHT():
     commandMessage, serverAddress = clientSocket.recvfrom(2048)
     print(commandMessage.decode())
 
-    # returns a list of n users that will construct the DHT
-    print(f'List of {n} users that will construct the DHT')
+    global userState
+    if storeUser == userName:
+        userState = "Leader"
 
 
 def client_completeDHT():
     # command input is stored into username
     userName = commandInput[1]
+
+    # if client is not username
+    global storeUser
+    if storeUser != userName:
+        print("FAILURE: Client is not the user")
+        return
 
     # the 3 lets the server know this is the complete command
     clientSocket.sendto("3".encode(), (serverName, serverPort))
@@ -95,6 +129,12 @@ def client_queryDHT():
     # command input is stored into username
     userName = commandInput[1]
 
+    # if client is not username
+    global storeUser
+    if storeUser != userName:
+        print("FAILURE: Client is not the user")
+        return
+
     # the 4 lets the server know this is the query command
     clientSocket.sendto("4".encode(), (serverName, serverPort))
 
@@ -103,7 +143,13 @@ def client_queryDHT():
 
     # server sends client random user in DHT
     randomUser, serverAddress = clientSocket.recvfrom(2048)
-    print(randomUser.decode())
+    randomUser = randomUser.decode()
+    firstWord = randomUser.split()[0]
+
+    # if failure condition was executed
+    if firstWord == "FAILURE:":
+        print(randomUser)
+        return
 
     # send long name of country to server
     longNameInput = input("Enter long name of country to query: ")
@@ -111,6 +157,13 @@ def client_queryDHT():
 
     # server sends back record
     recordTable, serverAddress = clientSocket.recvfrom(2048)
+    recordTable = recordTable.decode()
+    firstWord = recordTable.split()[0]
+
+    if firstWord == "FAILURE:":
+        print(recordTable)
+        return
+
     print(recordTable)
 
     # command message returned and printed
@@ -124,6 +177,12 @@ def client_leaveDHT():
 
     # command input is stored into username
     userName = commandInput[1]
+
+    # if client is not username
+    global storeUser
+    if storeUser != userName:
+        print("FAILURE: Client is not the user")
+        return
 
     # the 5 lets the server know this is the leave dht command
     clientSocket.sendto("5".encode(), (serverName, serverPort))
@@ -159,6 +218,12 @@ def client_deRegister():
     # command input is stored into username
     userName = commandInput[1]
 
+    # if client is not username
+    global storeUser
+    if storeUser != userName:
+        print("FAILURE: Client is not the user")
+        return
+
     # the 7 lets the server know this is the de-register command
     clientSocket.sendto("7".encode(), (serverName, serverPort))
 
@@ -167,9 +232,14 @@ def client_deRegister():
 
     # command message returned and printed
     commandMessage, serverAddress = clientSocket.recvfrom(2048)
-    print(commandMessage.decode())
+    commandMessage = commandMessage.decode()
+    firstWord = commandMessage.split()[0]
 
     # exit application after user is de-registered
+    if firstWord == "FAILURE:":
+        print(commandMessage)
+        return
+    print(commandMessage)
     print("User is now de-registered. Exiting...")
     exit()
 
@@ -177,6 +247,12 @@ def client_deRegister():
 def client_joinDHT():
     # command input is stored into username
     userName = commandInput[1]
+
+    # if client is not username
+    global storeUser
+    if storeUser != userName:
+        print("FAILURE: Client is not the user")
+        return
 
     # the 8 lets the server know this is the join command
     clientSocket.sendto("8".encode(), (serverName, serverPort))
@@ -193,6 +269,12 @@ def client_teardownDHT():
     # command input is stored into username
     userName = commandInput[1]
 
+    # if client is not username
+    global storeUser
+    if storeUser != userName:
+        print("FAILURE: Client is not the user")
+        return
+
     # the 9 lets the server know this is the teardown-dht command
     clientSocket.sendto("9".encode(), (serverName, serverPort))
 
@@ -203,10 +285,19 @@ def client_teardownDHT():
     commandMessage, serverAddress = clientSocket.recvfrom(2048)
     print(commandMessage.decode())
 
+    global userState
+    userState = ""
+
 
 def client_teardownComplete():
     # command input is stored into username
     userName = commandInput[1]
+
+    # if client is not username
+    global storeUser
+    if storeUser != userName:
+        print("FAILURE: Client is not the user")
+        return
 
     # the 10 lets the server know this is the teardown-complete command
     clientSocket.sendto("10".encode(), (serverName, serverPort))

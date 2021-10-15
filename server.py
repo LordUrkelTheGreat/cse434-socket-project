@@ -85,9 +85,6 @@ def server_register():
         serverSocket.sendto(returnCode.encode(), clientAddressRegister)
         return
 
-    # random boolean statement set to false as default
-    valid = False
-
     # decode username, ip address, and port number
     decodeName = regName.decode()
     decodeIP = regIP.decode()
@@ -97,21 +94,21 @@ def server_register():
     # checks if username exists in the dictionary. if it does,
     # then return FAILURE to indicate that register function
     # failed to create new user
-    if valid is False:
-        # checks if username is registered
-        for key in userDict.items():
-            # check if decodeName is in dictionary
-            if decodeName in key:
-                returnCode = "FAILURE: Username already exists"
-                serverSocket.sendto(returnCode.encode(), clientAddressRegister)
-                return
-        # checks if port number is registered
-        for value in userDict.values():
-            # check if decodePort is in dictionary
-            if decodePort in value:
-                returnCode = "FAILURE: Port number is already in use"
-                serverSocket.sendto(returnCode.encode(), clientAddressRegister)
-                return
+    # checks if username is registered
+    for key in userDict:
+        # check if decodeName is in dictionary
+        if decodeName == key:
+            returnCode = "FAILURE: Username already exists"
+            serverSocket.sendto(returnCode.encode(), clientAddressRegister)
+            return
+    # checks if port number is registered
+    for key in userDict:
+        # check if decodePort is in dictionary
+        portNumber = int(userDict[key][2])
+        if int(decodePort) == portNumber:
+            returnCode = "FAILURE: Port number is already in use"
+            serverSocket.sendto(returnCode.encode(), clientAddressRegister)
+            return
 
     # add decoded information to dictionary
     decodePort = int(decodePort)
@@ -282,7 +279,10 @@ def server_setupDHT():
                     global lockout2
                     lockout2 = True
 
-                    # send DHT table of users and their ip addresses and port numbers to client
+                    print(f'List of {len(dhtDict)} users that will construct the DHT')
+                    for key in dhtDict.keys():
+                        print(f'User: ({dhtDict[key][0]}) IP Address: ({dhtDict[key][1]}) Port Number: ({dhtDict[key][2]})')
+
                     return
                 else:
                     returnCode = "FAILURE: n is bigger than the number of registered users"
@@ -404,11 +404,12 @@ def server_queryDHT():
 
     # find node ID
     returnCode = "FAILURE: Long-name search didn't work"
-    for key, value in dhtDict.items():
+    for key in dhtDict.keys():
         # store node id
-        ID = dhtDict[key][7]
+        ID = int(dhtDict[key][7])
+        longName = dhtDict[key][8][position][3]
         # if node ID is the same as calculated ID and if long name is found in records
-        if inWhichID is ID and word is dhtDict[key][7][position][3]:
+        if inWhichID == ID and word == longName:
             # return record to client
             record0 = dhtDict[key][8][position][0]
             record1 = dhtDict[key][8][position][1]
@@ -752,27 +753,27 @@ def server_rebuiltDHT():
         dhtDict[key] = tempDHTDict[key].copy()
 
     # print stuff from dht dict (comment if not testing)
-    for key in dhtDict.keys():
+    # for key in dhtDict.keys():
         # user
-        print(f'User: {dhtDict[key][0]}')
+        # print(f'User: {dhtDict[key][0]}')
         # ip address
-        print(f'IP Address: {dhtDict[key][1]}')
+        # print(f'IP Address: {dhtDict[key][1]}')
         # port number
-        print(f'Port Number: {dhtDict[key][2]}')
+        # print(f'Port Number: {dhtDict[key][2]}')
         # state
-        print(f'State: {dhtDict[key][3]}')
+        # print(f'State: {dhtDict[key][3]}')
         # left port
-        print(f'Left Port: {dhtDict[key][4]}')
+        # print(f'Left Port: {dhtDict[key][4]}')
         # right port
-        print(f'Right Port: {dhtDict[key][5]}')
+        # print(f'Right Port: {dhtDict[key][5]}')
         # query port
-        print(f'Query Port: {dhtDict[key][6]}')
+        # print(f'Query Port: {dhtDict[key][6]}')
         # node id
-        print(f'Node ID: {dhtDict[key][7]}')
+        # print(f'Node ID: {dhtDict[key][7]}')
         # records
         # print(f'Records: {dhtDict[key][8]}')
 
-    print(userDict)
+    # print(userDict)
 
     # empty temporary dht dictionary
     tempDHTDict = {}
@@ -1021,7 +1022,7 @@ def server_teardownDHT():
     valid = True
     for key in dhtList:
         if key == decodeUserName:
-            if dhtDict[key][3] == 'Leader':
+            if str(dhtDict[key][3]) == 'Leader':
                 valid = True
                 break
     if valid is False:
@@ -1091,6 +1092,7 @@ def server_teardownComplete():
     # lockout is disabled
     global lockout4
     lockout4 = False
+    lockout2 = False
     global lockout
     lockout = False
 
