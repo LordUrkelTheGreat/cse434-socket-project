@@ -43,6 +43,9 @@ addUserName = ""
 # leader username
 leaderUserName = ""
 
+# exit file
+fileExit = False
+
 # do not delete
 serverPort = int(sys.argv[1])
 
@@ -217,7 +220,7 @@ def server_setupDHT():
 
                     # copy data from user dictionary to dht dictionary
                     for key in userDict:
-                        if userDict[key][3] is not 'Leader' and nodeID < (decodeN - 1):
+                        if userDict[key][3] != 'Leader' and nodeID < (decodeN - 1):
                             # copy data
                             dhtDict[key] = userDict[key].copy()
 
@@ -407,9 +410,8 @@ def server_queryDHT():
     for key in dhtDict.keys():
         # store node id
         ID = int(dhtDict[key][7])
-        longName = dhtDict[key][8][position][3]
         # if node ID is the same as calculated ID and if long name is found in records
-        if inWhichID == ID and word == longName:
+        if inWhichID == ID and word == dhtDict[key][8][position][3]:
             # return record to client
             record0 = dhtDict[key][8][position][0]
             record1 = dhtDict[key][8][position][1]
@@ -470,7 +472,7 @@ def server_leaveDHT():
         return
 
     # checks if dht is empty
-    if len(dhtDict) is 0:
+    if len(dhtDict) == 0:
         returnCode = "FAILURE: DHT doesn't exist"
         serverSocket.sendto(returnCode.encode(), clientAddressLeave)
         return
@@ -558,7 +560,7 @@ def server_leaveDHT():
                 dhtDict[key][5] = dhtDict[node0][4]
             else:
                 # if current node is node 0 store key in random variable
-                if dhtDict[key][3] is 'Leader':
+                if dhtDict[key][3] == 'Leader':
                     node0 = key
                 # makes sure node 0 left and right ports are not updated
                 if dhtDict[key][7] != 0:
@@ -722,7 +724,7 @@ def server_rebuiltDHT():
                 tempDHTDict[key][5] = tempDHTDict[node0][4]
             else:
                 # if current node is node 0 store key in random variable
-                if tempDHTDict[key][3] is 'Leader':
+                if tempDHTDict[key][3] == 'Leader':
                     node0 = key
                 # makes sure node 0 left and right ports are not updated
                 if tempDHTDict[key][7] != 0:
@@ -970,7 +972,7 @@ def server_joinDHT():
                 dhtDict[key][5] = dhtDict[node0][4]
             else:
                 # if current node is node 0 store key in random variable
-                if dhtDict[key][3] is 'Leader':
+                if dhtDict[key][3] == 'Leader':
                     node0 = key
                 # makes sure node 0 left and right ports are not updated
                 if dhtDict[key][7] != 0:
@@ -1025,7 +1027,7 @@ def server_teardownDHT():
     valid = True
     for key in dhtList:
         if key == decodeUserName:
-            if str(dhtDict[key][3]) == 'Leader':
+            if dhtDict[decodeUserName][3] == 'Leader':
                 valid = True
                 break
     if valid is False:
@@ -1106,6 +1108,9 @@ def server_teardownComplete():
 
 
 while True:
+    if len(userDict) == 0 and len(dhtDict) == 0 and fileExit is True:
+        print("ALl users deregistered. Exiting...")
+        exit()
     # receives encoded command from client and decodes it
     encodedCommand, clientAddress = serverSocket.recvfrom(2048)
     command = encodedCommand.decode()
@@ -1127,6 +1132,8 @@ while True:
         server_rebuiltDHT()
     if command == "7":
         server_deRegister()
+        if len(userDict) == 0:
+            fileExit = True
     if command == "8":
         server_joinDHT()
     if command == "9":
