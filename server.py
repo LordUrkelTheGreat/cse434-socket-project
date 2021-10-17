@@ -774,6 +774,9 @@ def server_rebuiltDHT():
         # print(f'Records: {dhtDict[key][8]}')
 
     # print(userDict)
+    print(f'List of {len(dhtDict)} users that is in the rebuilt DHT')
+    for key in dhtDict.keys():
+        print(f'User: ({dhtDict[key][0]}) IP Address: ({dhtDict[key][1]}) Port Number: ({dhtDict[key][2]})')
 
     # empty temporary dht dictionary
     tempDHTDict = {}
